@@ -108,7 +108,7 @@ class Particle:
 # =============================================================================
 # FUNZIONE FITNESS
 # =============================================================================
-def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series) -> float:
+def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series, r_cf: np.ndarray, r_ff: np.ndarray) -> float:
     """
     Calcola il fitness basato sulla correlation analysis.
     
@@ -121,8 +121,38 @@ def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series)
         float: valore di fitness (più alto = migliore)
     """
     # TODO: Implementare la fitness function
-    pass
 
+    # Selected features extraction 
+    selected = np.where(particle.position==1)[0]
+    k = len(selected)
+
+    # Check on k
+    if k==0:
+        return 0.0
+
+    # Mean on the feature-feature correlation 
+    r_cf_mean = np.mean(r_cf[selected])
+
+    # Check if there is only 1 feature
+    if k>1:
+        # Submatrix of selected features (dimension k x k)
+        sub_matrix = r_ff[np.ix_(selected,selected)] 
+
+        # Formula: r_ff_mean = (Total Sum - Diagonal Sum)/(k^2-k)
+        r_ff_mean = (np.sum(sub_matrix)-k)/(k**2-k)
+    else:
+        r_ff_mean= 0.0
+
+    # Fitness computation
+    # Formula: CFS = (k*r_cf_mean)/sqrt(k+k*(k-1)*r_ff_mean)
+
+    num = k*r_cf_mean
+    den = np.sqrt(k+k*(k-1)*r_ff_mean)
+
+    if den == 0:
+        return 0.0
+    else:
+        return num/den
 
 # =============================================================================
 # AGGIORNAMENTO PSO
