@@ -407,7 +407,7 @@ class ParticleSwarmOptimization:
             for particle in swarm:
                 particle.velocity = update_velocity(particle, self.gbest_position,
                                 self.w, self.c1, self.c2, self.v_max)
-                particle.pos = update_position(particle)
+                particle.position = update_position(particle)
 
         # Aggiorno il log globale
         best_particle = max(swarm, key=lambda p: p.fitness)
@@ -642,7 +642,7 @@ if __name__ == "__main__":
     # Calcola la matrice di correlazione tra le feature
     corrs_ff = np.abs(X.corr().values)
 
-
+    
     # 2. Esecuzione scenari
     # results_swarm = run_experiment_swarm_size(X, y)
     # results_coefficients = run_experiment_pso_coefficients(X, y)
