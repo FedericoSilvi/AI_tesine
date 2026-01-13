@@ -108,7 +108,7 @@ class Particle:
 # =============================================================================
 # FUNZIONE FITNESS
 # =============================================================================
-def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series) -> float:
+def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series, r_cf: np.ndarray, r_ff: np.ndarray) -> float:
     """
     Calcola il fitness basato sulla correlation analysis.
 
@@ -121,8 +121,7 @@ def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series)
         float: valore di fitness (più alto = migliore)
     """
     # TODO: Implementare la fitness function -DONE
-    r_cf = np.array([np.abs(X.iloc[:, i].corr(y_numeric)) for i in range(X.shape[1])])
-    r_ff = np.abs(X.corr().values)
+    
 
     # Selected features extraction
     selected = np.where(particle.position==1)[0]
@@ -256,7 +255,7 @@ class ParticleSwarmOptimization:
                  c1: float = 2.0,          # coefficiente cognitivo
                  c2: float = 2.0,          # coefficiente sociale
                  v_max: float = 4.0,       # velocità massima
-                 max_iterations: int = 100,
+                 max_iterations: int = 50,
                  convergence_threshold: int = None,  # iterazioni senza miglioramento
                  convergence_tolerance: float = 1e-5,
                  random_seed: int = SEED):
@@ -285,7 +284,7 @@ class ParticleSwarmOptimization:
 
     def evaluate_swarm(self, swarm: List[Particle],
                        X: pd.DataFrame, y: pd.Series,
-                       ) -> List[float]:
+                       r_cf: np.ndarray, r_ff: np.ndarray) -> List[float]:
         """
         Valuta il fitness di tutte le particelle dello sciame.
 
@@ -301,7 +300,7 @@ class ParticleSwarmOptimization:
         # Valuto ogni particella dello sciame
         for particle in swarm:
             # Calcolo della fitness della particella corrente
-            particle.fitness = fitness_correlation_based(particle, X, y)
+            particle.fitness = fitness_correlation_based(particle, X, y,r_cf,r_ff)
 
             # Aggiornamento del best personale (pbest) della particella
             # se la soluzione corrente è migliore di quelle precedenti
@@ -340,7 +339,7 @@ class ParticleSwarmOptimization:
         # Restituisco posizione e fitness del global best
         return self.gbest_position, self.gbest_fitness
 
-    def run(self, X: pd.DataFrame, y: pd.Series, id_run: int = 1) -> Dict:
+    def run(self, X: pd.DataFrame, y: pd.Series, r_cf: np.ndarray, r_ff: np.ndarray, id_run: int = 1, ) -> Dict:
         """
         Esegue l'algoritmo PSO.
 
@@ -373,7 +372,7 @@ class ParticleSwarmOptimization:
             self.w = w_start - (w_start - w_end) * (iteration / self.max_iterations)
 
             # 1. Valuto lo stormo ed aggiorno il global best se serve
-            self.evaluate_swarm(swarm, X, y)
+            self.evaluate_swarm(swarm, X, y,r_cf,r_ff)
 
             prev_best = self.gbest_fitness
             self.update_gbest(swarm)
@@ -648,14 +647,14 @@ if __name__ == "__main__":
     y_numeric = y.map({'P': 1, 'H': 0})
 
     # 3. Calcolo correlazioni
-    #corrs_cf = np.array([np.abs(X.iloc[:, i].corr(y_numeric)) for i in range(X.shape[1])])
-    #corrs_ff = np.abs(X.corr().values)
+    r_cf = np.array([np.abs(X.iloc[:, i].corr(y_numeric)) for i in range(X.shape[1])])
+    r_ff = np.abs(X.corr().values)
 
     # 4. Creazione oggetto PSO con parametri di default
     pso = ParticleSwarmOptimization(max_iterations=100)
 
     # 5. Esecuzione PSO
-    result = pso.run(X, y_numeric, id_run=1)
+    result = pso.run(X, y_numeric, r_cf,r_ff, id_run=1)
 
     # 6. Stampa log iterazioni
     print("\n=== LOG ITERAZIONI ===")
@@ -683,6 +682,7 @@ if __name__ == "__main__":
     print("\n\n\n\n=== FREQUENZA SELEZIONE FEATURES (ORDINATE PER ID) ===\n")
     for feature, count in sorted(result['logger'].feature_counts.items()):
         print(f"Feature {feature} | Selezionata {count} volte")
+
 
 
 
