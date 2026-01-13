@@ -40,7 +40,7 @@ def load_darwin_dataset(filepath: str) -> Tuple[pd.DataFrame, pd.Series]:
         X: DataFrame delle features
         y: Series delle classi
     """
-    # TODO: Implementare il caricamento
+    # TODO: Implementare il caricamento -DONE
 
     # Dataset loading 
     dataset = pd.read_csv(filepath)
@@ -72,7 +72,7 @@ class Particle:
         self.n_features = n_features
         
         # Posizione (binaria)
-        # TODO: Inizializzare la posizione (random se non fornita)
+        # TODO: Inizializzare la posizione (random se non fornita) -DONE
         if position is not None:
             self.position=position
         else:
@@ -91,17 +91,18 @@ class Particle:
     
     def count_selected_features(self) -> int:
         """Restituisce il numero di features selezionate."""
-        # TODO: Implementare
+        # TODO: Implementare -DONE 
 
         return np.sum(self.position)
 
     
     def update_pbest(self):
         """Aggiorna il personal best se il fitness corrente è migliore."""
-        # TODO: Implementare
+        # TODO: Implementare -DONE 
 
         if self.pbest_fitness<self.fitness:
             self.pbest_fitness = self.fitness
+            self.pbest_position = self.position.copy()
 
 
 # =============================================================================
@@ -119,7 +120,7 @@ def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series,
     Returns:
         float: valore di fitness (più alto = migliore)
     """
-    # TODO: Implementare la fitness function
+    # TODO: Implementare la fitness function -DONE
 
     # Selected features extraction 
     selected = np.where(particle.position==1)[0]
@@ -162,7 +163,7 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
     
     HINT: Gestire overflow per valori molto grandi/piccoli di x
     """
-    # TODO: Implementare con gestione overflow
+    # TODO: Implementare con gestione overflow -DONE
 
     # Clipping the velocity in order to avoid overflow
     x_check = np.clip(x,-50,50)
@@ -192,7 +193,7 @@ def update_velocity(particle: Particle, gbest_position: np.ndarray,
     Returns:
         np.ndarray: nuova velocità
     """
-    # TODO: Implementare
+    # TODO: Implementare -DONE
     
     r1 = np.random.rand(particle.n_features)
     r2 = np.random.rand(particle.n_features)
@@ -216,7 +217,7 @@ def update_position(particle: Particle) -> np.ndarray:
     Returns:
         np.ndarray: nuova posizione binaria
     """
-    # TODO: Implementare
+    # TODO: Implementare -DONE
 
     n_features = particle.n_features
 
