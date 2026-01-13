@@ -262,31 +262,85 @@ class ParticleSwarmOptimization:
                  convergence_tolerance: float = 1e-5,
                  random_seed: int = SEED):
         
-        # TODO: Inizializzare i parametri
-        pass
+        # TODO: Inizializzare i parametri - DONE
+        np.random.seed(random_seed) # imposto il seed per il generatore randomico
+
+        self.swarm_size = swarm_size
+        self.w = w
+        self.c1 = c1
+        self.c2 = c2
+        self.v_max = v_max
+        self.max_iterations = max_iterations
+        self.convergence_threshold = convergence_threshold
+        self.convergence_tolerance = convergence_tolerance
+
+        # Global best
+        self.gbest_position = None
+        self.gbest_fitness = float('-inf')
     
     def initialize_swarm(self, n_features: int) -> List[Particle]:
         """Inizializza lo sciame di particelle."""
-        # TODO: Implementare
-        pass
-    
-    def evaluate_swarm(self, swarm: List[Particle], 
+        # TODO: Implementare - DONE
+        return [Particle(n_features) for _ in range(self.swarm_size)] # Creo lo sciame come una lista di particelle
+
+
+    def evaluate_swarm(self, swarm: List[Particle],
                        X: pd.DataFrame, y: pd.Series) -> List[float]:
-        """Valuta il fitness di tutte le particelle."""
-        # TODO: Implementare
-        pass
-    
+        """
+        Valuta il fitness di tutte le particelle dello sciame.
+
+        Per ogni particella viene calcolata la qualità della soluzione
+        (sottoinsieme di feature selezionate) tramite una funzione di fitness
+        basata sulla correlazione con la variabile target.
+        """
+        # TODO: Implementare - DONE
+
+        # Lista che conterrà i valori di fitness di tutte le particelle
+        fitness_values = []
+
+        # Valuto ogni particella dello sciame
+        for particle in swarm:
+            # Calcolo della fitness della particella corrente
+            particle.fitness = fitness_correlation_based(particle, X, y)
+
+            # Aggiornamento del best personale (pbest) della particella
+            # se la soluzione corrente è migliore di quelle precedenti
+            particle.update_pbest()
+
+            # Salvo il valore di fitness per eventuali analisi statistiche
+            fitness_values.append(particle.fitness)
+
+        # Restituisco la lista dei valori di fitness dello sciame
+        return fitness_values
+
     def update_gbest(self, swarm: List[Particle]) -> Tuple[np.ndarray, float]:
         """
-        Aggiorna il global best.
-        
+        Aggiorna il global best (gbest) dello sciame.
+
+        Il global best rappresenta la migliore soluzione trovata
+        da tutte le particelle fino all'iterazione corrente.
+
         Returns:
-            Tuple: (posizione gbest, fitness gbest)
+            Tuple:
+                - posizione del global best
+                - valore della fitness associata
         """
-        # TODO: Implementare
-        pass
-    
-    def run(self, X: pd.DataFrame, y: pd.Series) -> Dict:
+
+        # TODO: Implementare - DONE
+        # Scorro tutte le particelle dello sciame
+        for particle in swarm:
+
+            # Se la fitness della particella corrente è migliore
+            # del miglior valore globale trovato finora,
+            # aggiorno il global best
+            if particle.fitness > self.gbest_fitness:
+                self.gbest_fitness = particle.fitness
+                self.gbest_position = particle.position.copy()
+
+        # Restituisco posizione e fitness del global best
+        return self.gbest_position, self.gbest_fitness
+
+    def run(self, X: pd.DataFrame, y: pd.Series, id_run: int = 1) -> Dict:
         """
         Esegue l'algoritmo PSO.
         
@@ -299,26 +353,116 @@ class ParticleSwarmOptimization:
         Returns:
             Dict con risultati e metriche
         """
-        # TODO: Implementare il loop principale del PSO
-        pass
-    
+        # TODO: Implementare il loop principale del PSO - DONE
+        start_time = time.time()
+
+        logger = ExperimentLogger()
+
+        swarm = self.initialize_swarm(X.shape[1])
+        no_improvement = 0
+
+        iterations_completed = 1
+
+        for iteration in range(self.max_iterations):
+
+            # 1. Valuto lo stormo ed aggiorno il global best se serve
+            self.evaluate_swarm(swarm, X, y)
+
+            prev_best = self.gbest_fitness
+            self.update_gbest(swarm)
+
+            # Metriche per il logging
+            avg_fitness = float(np.mean([particle.fitness for particle in swarm]))
+            dispersion = self.calculate_swarm_dispersion(swarm)
+            avg_velocity = self.calculate_average_velocity(swarm)
+
+            # Aggiorno il log dell'iterazione
+            logger.log_iteration(
+                iteration=iteration,
+                gbest_fitness=self.gbest_fitness,
+                avg_fitness=avg_fitness,
+                dispersion=dispersion,
+                avg_velocity=avg_velocity,
+                selected_features=self.gbest_position
+            )
+
+            # 2. Valuto se terminare prematuramente l'algoritmo
+
+            # Controllo se il miglioramento della fitness globale
+            # rispetto all'iterazione precedente è inferiore alla soglia di tolleranza
+            if abs(self.gbest_fitness - prev_best) < self.convergence_tolerance:
+                # Se il miglioramento è trascurabile, incremento il contatore
+                # delle iterazioni senza miglioramento significativo
+                no_improvement += 1
+            else:
+                # Se c'è stato un miglioramento apprezzabile,
+                # azzero il contatore
+                no_improvement = 0
+
+            # Se è stato definito un numero massimo di iterazioni senza miglioramento
+            # e tale soglia viene superata, interrompo l'esecuzione dell'algoritmo
+            if self.convergence_threshold and no_improvement >= self.convergence_threshold:
+                break
+
+            # 3. Aggiorno posizione e velocità delle particelle
+            for particle in swarm:
+                update_velocity(particle, self.gbest_position,
+                                self.w, self.c1, self.c2, self.v_max)
+                update_position(particle)
+
+        # Aggiorno il log globale
+        best_particle = max(swarm, key=lambda p: p.fitness)
+
+        logger.log_run(
+            run_id=id_run, # placeholder, va aggiunto run_id tra i parametri della funzione?
+            best_particle=best_particle,
+            execution_time=time.time() - start_time,
+            iterations_completed=iterations_completed
+        )
+
+        return {
+            "best_fitness": self.gbest_fitness,
+            "best_position": self.gbest_position,
+            "selected_features": int(self.gbest_position.sum()),
+            "iterations": iterations_completed,
+            "execution_time": time.time() - start_time,
+            "logger": logger
+        }
+
     def calculate_swarm_dispersion(self, swarm: List[Particle]) -> float:
         """
         Calcola la dispersione dello sciame.
-        
-        HINT: Distanza media delle particelle dal centroide
+
+        La dispersione misura quanto le particelle sono distribuite
+        nello spazio delle soluzioni ed è calcolata come la distanza
+        media delle particelle dal centroide dello sciame.
         """
-        # TODO: Implementare
-        pass
-    
+
+        # TODO: Implementare - DONE
+
+        # Estraggo le posizioni di tutte le particelle
+        # e le converto in una matrice NumPy
+        positions = np.array([particle.position for particle in swarm])
+
+        # Calcolo il centroide dello sciame come media delle posizioni
+        centroid = np.mean(positions, axis=0)
+
+        # Calcolo la distanza euclidea di ogni particella dal centroide
+        distances = np.linalg.norm(positions - centroid, axis=1)
+
+        # Restituisco la distanza media come misura di dispersione
+        return distances.mean()
+
     def calculate_average_velocity(self, swarm: List[Particle]) -> float:
         """
         Calcola la velocità media dello sciame.
         
         HINT: Media delle norme dei vettori velocità
         """
-        # TODO: Implementare
-        pass
+        # TODO: Implementare - DONE
+        # Calcolo la media delle velocità delle particelle
+        velocities = [np.linalg.norm(particle.velocity) for particle in swarm]
+        return float(np.mean(velocities))
 
 
 # =============================================================================
@@ -345,14 +489,35 @@ class ExperimentLogger:
                       avg_fitness: float, dispersion: float,
                       avg_velocity: float, selected_features: np.ndarray):
         """Logga i dati di un'iterazione."""
-        # TODO: Implementare
-        pass
+        # TODO: Implementare - DONE
+        iter_data = {
+            "iteration": iteration,
+            "gbest_fitness": gbest_fitness,
+            "avg_fitness": avg_fitness,
+            "dispersion": dispersion,
+            "avg_velocity": avg_velocity,
+            "selected_features_count": int(selected_features.sum())
+        }
+        self.iterations_data.append(iter_data)
+
+        # Aggiorno la frequenza di selezione di ogni feature
+        for idx, sel in enumerate(selected_features):
+            if sel:
+                self.feature_counts[idx] = self.feature_counts.get(idx, 0) + 1
     
     def log_run(self, run_id: int, best_particle: Particle, 
                 execution_time: float, iterations_completed: int):
         """Logga i dati di un run completo."""
-        # TODO: Implementare
-        pass
+        # TODO: Implementare - DONE
+        run_data = {
+            "run_id": run_id,
+            "best_fitness": best_particle.fitness,
+            "selected_features_count": best_particle.count_selected_features(),
+            "execution_time": execution_time,
+            "iterations_completed": iterations_completed,
+            "best_position": best_particle.position.copy()
+        }
+        self.run_times.append(run_data)
 
 
 # =============================================================================
