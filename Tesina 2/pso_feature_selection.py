@@ -168,10 +168,8 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
     # Clipping the velocity in order to avoid overflow
     x_check = np.clip(x,-50,50)
     
-    # Check small velocity components
-    for vel in x_check:
-        if vel<1e-3:
-            vel=1
+    # Check small velocity components(?)
+    
 
     # Sigmoid computation 
     z = 1/(1+np.exp(-x_check))
@@ -198,7 +196,7 @@ def update_velocity(particle: Particle, gbest_position: np.ndarray,
     r1 = np.random.rand(particle.n_features)
     r2 = np.random.rand(particle.n_features)
 
-    v = w*v + c1*r1*(particle.pbest_position - particle.position) + c2*r2*(gbest_position - particle.position)
+    v = w*particle.velocity + c1*r1*(particle.pbest_position - particle.position) + c2*r2*(gbest_position - particle.position)
 
     v_lim = np.clip(v,-v_max,v_max)
 
@@ -285,7 +283,8 @@ class ParticleSwarmOptimization:
 
 
     def evaluate_swarm(self, swarm: List[Particle],
-                       X: pd.DataFrame, y: pd.Series) -> List[float]:
+                       X: pd.DataFrame, y: pd.Series,
+                       r_cf: np.ndarray, r_ff: np.ndarray) -> List[float]:
         """
         Valuta il fitness di tutte le particelle dello sciame.
 
@@ -301,7 +300,7 @@ class ParticleSwarmOptimization:
         # Valuto ogni particella dello sciame
         for particle in swarm:
             # Calcolo della fitness della particella corrente
-            particle.fitness = fitness_correlation_based(particle, X, y)
+            particle.fitness = fitness_correlation_based(particle, X, y,r_cf,r_ff)
 
             # Aggiornamento del best personale (pbest) della particella
             # se la soluzione corrente è migliore di quelle precedenti
@@ -340,7 +339,7 @@ class ParticleSwarmOptimization:
         # Restituisco posizione e fitness del global best
         return self.gbest_position, self.gbest_fitness
 
-    def run(self, X: pd.DataFrame, y: pd.Series, id_run: int = 1) -> Dict:
+    def run(self, X: pd.DataFrame, y: pd.Series,r_cf: np.ndarray, r_ff: np.ndarray, id_run: int = 1) -> Dict:
         """
         Esegue l'algoritmo PSO.
         
@@ -366,7 +365,7 @@ class ParticleSwarmOptimization:
         for iteration in range(self.max_iterations):
 
             # 1. Valuto lo stormo ed aggiorno il global best se serve
-            self.evaluate_swarm(swarm, X, y)
+            self.evaluate_swarm(swarm, X, y,r_cf,r_ff)
 
             prev_best = self.gbest_fitness
             self.update_gbest(swarm)
@@ -406,9 +405,9 @@ class ParticleSwarmOptimization:
 
             # 3. Aggiorno posizione e velocità delle particelle
             for particle in swarm:
-                update_velocity(particle, self.gbest_position,
+                particle.velocity = update_velocity(particle, self.gbest_position,
                                 self.w, self.c1, self.c2, self.v_max)
-                update_position(particle)
+                particle.pos = update_position(particle)
 
         # Aggiorno il log globale
         best_particle = max(swarm, key=lambda p: p.fitness)
@@ -635,8 +634,15 @@ if __name__ == "__main__":
     # HINT: Struttura suggerita per eseguire tutti gli esperimenti
     
     # 1. Caricamento dati
-    # X, y = load_darwin_dataset("DARWIN.csv")
+    X, y = load_darwin_dataset("DARWIN.csv")
     
+    # Calcola la correlazione assoluta (Pearson) tra ogni feature e il target
+    corrs_cf = np.array([np.abs(X.iloc[:, i].corr(y)) for i in range(X.shape[1])])
+
+    # Calcola la matrice di correlazione tra le feature
+    corrs_ff = np.abs(X.corr().values)
+
+
     # 2. Esecuzione scenari
     # results_swarm = run_experiment_swarm_size(X, y)
     # results_coefficients = run_experiment_pso_coefficients(X, y)
