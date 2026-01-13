@@ -98,7 +98,7 @@ class Particle:
     
     def update_pbest(self):
         """Aggiorna il personal best se il fitness corrente è migliore."""
-        # TODO: Implementare -DONE 
+        # TODO: Implementare  -DONE 
 
         if self.pbest_fitness<self.fitness:
             self.pbest_fitness = self.fitness
