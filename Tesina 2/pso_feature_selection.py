@@ -73,11 +73,14 @@ class Particle:
         
         # Posizione (binaria)
         # TODO: Inizializzare la posizione (random se non fornita)
-        self.position = None
+        if position is not None:
+            self.position=position
+        else:
+         self.position = np.random.randint(0,2,size=self.n_features)
         
         # Velocità (continua)
         # HINT: Inizializzare in range ragionevole, es. [-4, 4]
-        self.velocity = None
+        self.velocity = np.random.uniform(-4,4,size=self.n_features)
         
         # Personal best
         self.pbest_position = None
@@ -89,12 +92,17 @@ class Particle:
     def count_selected_features(self) -> int:
         """Restituisce il numero di features selezionate."""
         # TODO: Implementare
-        pass
+
+        return np.sum(self.position)
+
     
     def update_pbest(self):
         """Aggiorna il personal best se il fitness corrente è migliore."""
         # TODO: Implementare
-        pass
+
+        if self.pbest_fitness<self.fitness:
+            self.pbest_fitness = self.fitness
+            self.pbest_position = self.position.copy()
 
 
 # =============================================================================
