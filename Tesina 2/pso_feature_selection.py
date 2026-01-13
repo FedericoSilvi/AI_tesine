@@ -164,7 +164,13 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
     HINT: Gestire overflow per valori molto grandi/piccoli di x
     """
     # TODO: Implementare con gestione overflow
-    pass
+
+    # Clipping the velocity in order to avoid overflow
+    x_check = np.clip(x,-50,50)
+    # Sigmoid computation 
+    z = 1/(1+np.exp(-x_check))
+
+    return z
 
 
 def update_velocity(particle: Particle, gbest_position: np.ndarray,
