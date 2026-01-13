@@ -102,7 +102,6 @@ class Particle:
 
         if self.pbest_fitness<self.fitness:
             self.pbest_fitness = self.fitness
-            self.pbest_position = self.position.copy()
 
 
 # =============================================================================
