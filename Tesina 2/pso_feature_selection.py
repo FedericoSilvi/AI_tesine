@@ -211,7 +211,26 @@ def update_position(particle: Particle) -> np.ndarray:
         np.ndarray: nuova posizione binaria
     """
     # TODO: Implementare
-    pass
+
+    n_features = particle.n_features
+
+    # Apply the sigmoid to particle's velocity
+    prob = sigmoid(particle.velocity)
+
+    random = np.random.rand(particle.n_features)
+    pos = np.zeros(particle.n_features)
+
+    # Extract the indices for the update
+    indices = np.where(random<prob)[0]
+
+    # Position update
+    pos[indices] = 1
+
+    # When no feature is selected, the position is chosen randomly
+    if len(indices) == 0:
+        pos = np.random.randint(0,2,size=n_features)
+
+    return pos 
 
 
 # =============================================================================
