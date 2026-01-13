@@ -15,7 +15,7 @@ import pandas as pd
 import time
 from typing import Tuple, List, Dict
 
-# HINT: Considerate quali altre librerie potrebbero essere utili per 
+# HINT: Considerate quali altre librerie potrebbero essere utili per
 # la valutazione delle correlazioni e la visualizzazione
 
 # =============================================================================
@@ -30,28 +30,28 @@ SEED = 42  # HINT: Usare lo stesso seed per garantire riproducibilità
 def load_darwin_dataset(filepath: str) -> Tuple[pd.DataFrame, pd.Series]:
     """
     Carica il dataset DARWIN e gestisce eventuali missing values.
-    
-    HINT: 
+
+    HINT:
     - La prima colonna è l'ID, l'ultima è la classe (P/H)
     - Le colonne intermedie sono le 450 features (25 task × 18 features)
     - Considerate diverse strategie per i missing values
-    
+
     Returns:
         X: DataFrame delle features
         y: Series delle classi
     """
     # TODO: Implementare il caricamento -DONE
 
-    # Dataset loading 
+    # Dataset loading
     dataset = pd.read_csv(filepath)
 
     # Features and class extraction
-    features = dataset.iloc[:,1:-1] 
+    features = dataset.iloc[:,1:-1]
     classes = dataset.iloc[:,-1]
 
     # Missing values management: median substitution
     features = features.fillna(features.median())
-    
+
     return (features,classes)
 
 
@@ -61,44 +61,44 @@ def load_darwin_dataset(filepath: str) -> Tuple[pd.DataFrame, pd.Series]:
 class Particle:
     """
     Rappresenta una particella nello sciame.
-    
-    HINT: 
+
+    HINT:
     - Posizione binaria: 1 = feature selezionata, 0 = feature non selezionata
     - Velocità: valori continui che influenzano la probabilità di selezione
     - Considerate la funzione sigmoid per convertire velocità in probabilità
     """
-    
+
     def __init__(self, n_features: int, position: np.ndarray = None):
         self.n_features = n_features
-        
+
         # Posizione (binaria)
         # TODO: Inizializzare la posizione (random se non fornita) -DONE
         if position is not None:
             self.position=position
         else:
          self.position = np.random.randint(0,2,size=self.n_features)
-        
+
         # Velocità (continua)
         # HINT: Inizializzare in range ragionevole, es. [-4, 4]
         self.velocity = np.random.uniform(-4,4,size=self.n_features)
-        
+
         # Personal best
         self.pbest_position = None
         self.pbest_fitness = float('-inf')
-        
+
         # Fitness corrente
         self.fitness = float('-inf')
-    
+
     def count_selected_features(self) -> int:
         """Restituisce il numero di features selezionate."""
-        # TODO: Implementare -DONE 
+        # TODO: Implementare -DONE
 
         return np.sum(self.position)
 
-    
+
     def update_pbest(self):
         """Aggiorna il personal best se il fitness corrente è migliore."""
-        # TODO: Implementare  -DONE 
+        # TODO: Implementare  -DONE
 
         if self.pbest_fitness<self.fitness:
             self.pbest_fitness = self.fitness
@@ -111,18 +111,18 @@ class Particle:
 def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series, r_cf: np.ndarray, r_ff: np.ndarray) -> float:
     """
     Calcola il fitness basato sulla correlation analysis.
-    
+
     HINT:
     - Considerate la correlazione features-classe e features-features
     - Un buon subset ha alta correlazione con la classe e bassa ridondanza
     - Formula suggerita: CFS (Correlation-based Feature Selection)
-    
+
     Returns:
         float: valore di fitness (più alto = migliore)
     """
     # TODO: Implementare la fitness function -DONE
 
-    # Selected features extraction 
+    # Selected features extraction
     selected = np.where(particle.position==1)[0]
     k = len(selected)
 
@@ -130,13 +130,13 @@ def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series,
     if k==0:
         return 0.0
 
-    # Mean on the feature-class correlation 
+    # Mean on the feature-class correlation
     r_cf_mean = np.mean(r_cf[selected])
 
     # Check if there is only 1 feature
     if k>1:
         # Submatrix of selected features (dimension k x k)
-        sub_matrix = r_ff[np.ix_(selected,selected)] 
+        sub_matrix = r_ff[np.ix_(selected,selected)]
 
         # Formula: r_ff_mean = (Total Sum - Diagonal Sum)/(k^2-k)
         r_ff_mean = (np.sum(sub_matrix)-k)/(k**2-k)
@@ -160,18 +160,17 @@ def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series,
 def sigmoid(x: np.ndarray) -> np.ndarray:
     """
     Funzione sigmoid per conversione velocità -> probabilità.
-    
+
     HINT: Gestire overflow per valori molto grandi/piccoli di x
     """
     # TODO: Implementare con gestione overflow -DONE
 
     # Clipping the velocity in order to avoid overflow
     x_check = np.clip(x,-50,50)
-    
-    # Check small velocity components(?)
-    
 
-    # Sigmoid computation 
+
+
+    # Sigmoid computation
     z = 1/(1+np.exp(-x_check))
 
     return z
@@ -182,17 +181,17 @@ def update_velocity(particle: Particle, gbest_position: np.ndarray,
                     v_max: float = 4.0) -> np.ndarray:
     """
     Aggiorna la velocità della particella.
-    
-    HINT: 
+
+    HINT:
     - Formula: v = w*v + c1*r1*(pbest - x) + c2*r2*(gbest - x)
     - Limitare la velocità in [-v_max, v_max]
     - r1, r2 sono vettori random in [0,1]
-    
+
     Returns:
         np.ndarray: nuova velocità
     """
     # TODO: Implementare -DONE
-    
+
     r1 = np.random.rand(particle.n_features)
     r2 = np.random.rand(particle.n_features)
 
@@ -200,18 +199,18 @@ def update_velocity(particle: Particle, gbest_position: np.ndarray,
 
     v_lim = np.clip(v,-v_max,v_max)
 
-    return v_lim 
+    return v_lim
 
 
 def update_position(particle: Particle) -> np.ndarray:
     """
     Aggiorna la posizione della particella (versione binaria).
-    
+
     HINT:
     - Usare sigmoid(velocity) come probabilità
     - La nuova posizione è 1 se random < sigmoid(v), altrimenti 0
     - Gestire il caso in cui nessuna feature è selezionata
-    
+
     Returns:
         np.ndarray: nuova posizione binaria
     """
@@ -235,7 +234,7 @@ def update_position(particle: Particle) -> np.ndarray:
     if len(indices) == 0:
         pos = np.random.randint(0,2,size=n_features)
 
-    return pos 
+    return pos
 
 
 # =============================================================================
@@ -244,12 +243,12 @@ def update_position(particle: Particle) -> np.ndarray:
 class ParticleSwarmOptimization:
     """
     Implementazione dell'Algoritmo PSO per Feature Selection.
-    
+
     HINT: Questa classe dovrebbe essere modulare per permettere
     l'analisi parametrica richiesta dalla tesina.
     """
-    
-    def __init__(self, 
+
+    def __init__(self,
                  swarm_size: int = 100,
                  w: float = 0.7,           # inerzia
                  c1: float = 2.0,          # coefficiente cognitivo
@@ -259,7 +258,7 @@ class ParticleSwarmOptimization:
                  convergence_threshold: int = None,  # iterazioni senza miglioramento
                  convergence_tolerance: float = 1e-5,
                  random_seed: int = SEED):
-        
+
         # TODO: Inizializzare i parametri - DONE
         np.random.seed(random_seed) # imposto il seed per il generatore randomico
 
@@ -275,7 +274,7 @@ class ParticleSwarmOptimization:
         # Global best
         self.gbest_position = None
         self.gbest_fitness = float('-inf')
-    
+
     def initialize_swarm(self, n_features: int) -> List[Particle]:
         """Inizializza lo sciame di particelle."""
         # TODO: Implementare - DONE
@@ -342,13 +341,13 @@ class ParticleSwarmOptimization:
     def run(self, X: pd.DataFrame, y: pd.Series,r_cf: np.ndarray, r_ff: np.ndarray, id_run: int = 1) -> Dict:
         """
         Esegue l'algoritmo PSO.
-        
+
         HINT: Implementare logging dettagliato di:
         - Best/average fitness per iterazione
         - Features selezionate nella migliore soluzione
         - Tempo di esecuzione
         - Metriche dello sciame (dispersione, velocità media)
-        
+
         Returns:
             Dict con risultati e metriche
         """
@@ -363,6 +362,7 @@ class ParticleSwarmOptimization:
         iterations_completed = 1
 
         for iteration in range(self.max_iterations):
+            iterations_completed += 1
 
             # 1. Valuto lo stormo ed aggiorno il global best se serve
             self.evaluate_swarm(swarm, X, y,r_cf,r_ff)
@@ -455,7 +455,7 @@ class ParticleSwarmOptimization:
     def calculate_average_velocity(self, swarm: List[Particle]) -> float:
         """
         Calcola la velocità media dello sciame.
-        
+
         HINT: Media delle norme dei vettori velocità
         """
         # TODO: Implementare - DONE
@@ -470,21 +470,21 @@ class ParticleSwarmOptimization:
 class ExperimentLogger:
     """
     Logger per gli esperimenti.
-    
+
     HINT: Salvare tutte le informazioni necessarie per generare:
     - Curve di convergenza
     - Box plot delle distribuzioni
     - Frequenza di selezione delle features
     - Analisi comportamento sciame
     """
-    
+
     def __init__(self):
         self.iterations_data = []
         self.run_times = []
         self.feature_counts = {}  # frequenza selezione per feature
         self.swarm_behavior = []  # dispersione, velocità media, etc.
-    
-    def log_iteration(self, iteration: int, gbest_fitness: float, 
+
+    def log_iteration(self, iteration: int, gbest_fitness: float,
                       avg_fitness: float, dispersion: float,
                       avg_velocity: float, selected_features: np.ndarray):
         """Logga i dati di un'iterazione."""
@@ -503,8 +503,8 @@ class ExperimentLogger:
         for idx, sel in enumerate(selected_features):
             if sel:
                 self.feature_counts[idx] = self.feature_counts.get(idx, 0) + 1
-    
-    def log_run(self, run_id: int, best_particle: Particle, 
+
+    def log_run(self, run_id: int, best_particle: Particle,
                 execution_time: float, iterations_completed: int):
         """Logga i dati di un run completo."""
         # TODO: Implementare - DONE
@@ -523,13 +523,13 @@ class ExperimentLogger:
 # ESPERIMENTI PARAMETRICI
 # =============================================================================
 
-def run_experiment_swarm_size(X: pd.DataFrame, y: pd.Series, 
+def run_experiment_swarm_size(X: pd.DataFrame, y: pd.Series,
                               n_runs: int = 30) -> Dict:
     """
     Scenario 1: Test dimensioni sciame [20, 50, 100, 200, 500]
-    
+
     HINT: Parametri fissi: w=0.7, c1=2.0, c2=2.0
-    
+
     Returns:
         Dict con risultati aggregati per ogni dimensione
     """
@@ -542,15 +542,15 @@ def run_experiment_pso_coefficients(X: pd.DataFrame, y: pd.Series,
                                     n_runs: int = 30) -> Dict:
     """
     Scenario 2: Test coefficienti PSO
-    
+
     HINT:
     - Inerzia (w): [0.4, 0.6, 0.7, 0.9]
     - Coefficiente cognitivo (c1): [1.0, 1.5, 2.0, 2.5]
     - Coefficiente sociale (c2): [1.0, 1.5, 2.0, 2.5]
     - Dimensione sciame fissa: 100
-    
+
     Analisi: bilanciamento esplorazione/sfruttamento
-    
+
     Returns:
         Dict con risultati per ogni combinazione
     """
@@ -565,12 +565,12 @@ def run_experiment_stopping_criteria(X: pd.DataFrame, y: pd.Series,
                                      n_runs: int = 30) -> Dict:
     """
     Scenario 3: Test criteri di stop
-    
+
     HINT:
     - Iterazioni fisse: [50, 100, 200]
     - Convergenza (soglie): [10, 20, 30] iterazioni senza miglioramento
     - Tolleranze: [1e-4, 1e-5, 1e-6]
-    
+
     Returns:
         Dict con risultati per ogni criterio
     """
@@ -587,7 +587,7 @@ def run_experiment_stopping_criteria(X: pd.DataFrame, y: pd.Series,
 def plot_convergence_curves(results: Dict, title: str = "Convergence Curves"):
     """
     Genera curve di convergenza.
-    
+
     HINT: Media ± deviazione standard su tutti i run
     """
     # TODO: Implementare con matplotlib
@@ -597,7 +597,7 @@ def plot_convergence_curves(results: Dict, title: str = "Convergence Curves"):
 def plot_fitness_boxplots(results: Dict, title: str = "Fitness Distribution"):
     """
     Genera box plot delle distribuzioni fitness.
-    
+
     HINT: Un boxplot per ogni configurazione testata
     """
     # TODO: Implementare
@@ -607,7 +607,7 @@ def plot_fitness_boxplots(results: Dict, title: str = "Fitness Distribution"):
 def plot_feature_frequency(feature_counts: Dict, feature_names: List[str]):
     """
     Istogramma frequenza selezione features.
-    
+
     HINT: Mostrare le top-k features più frequentemente selezionate
     """
     # TODO: Implementare
@@ -617,8 +617,8 @@ def plot_feature_frequency(feature_counts: Dict, feature_names: List[str]):
 def plot_swarm_behavior(swarm_data: List[Dict], title: str = "Swarm Behavior"):
     """
     Visualizza il comportamento dello sciame nel tempo.
-    
-    HINT: 
+
+    HINT:
     - Dispersione delle particelle
     - Velocità media
     - Evoluzione del gbest
@@ -631,28 +631,38 @@ def plot_swarm_behavior(swarm_data: List[Dict], title: str = "Swarm Behavior"):
 # MAIN
 # =============================================================================
 if __name__ == "__main__":
-    # HINT: Struttura suggerita per eseguire tutti gli esperimenti
-    
     # 1. Caricamento dati
     X, y = load_darwin_dataset("DARWIN.csv")
-    
-    # Calcola la correlazione assoluta (Pearson) tra ogni feature e il target
-    corrs_cf = np.array([np.abs(X.iloc[:, i].corr(y)) for i in range(X.shape[1])])
 
-    # Calcola la matrice di correlazione tra le feature
+    # 2. Conversione target da stringa a numerico (P=1, H=0)
+    y_numeric = y.map({'P': 1, 'H': 0})
+
+    # 3. Calcolo correlazioni
+    corrs_cf = np.array([np.abs(X.iloc[:, i].corr(y_numeric)) for i in range(X.shape[1])])
     corrs_ff = np.abs(X.corr().values)
 
-    
-    # 2. Esecuzione scenari
-    # results_swarm = run_experiment_swarm_size(X, y)
-    # results_coefficients = run_experiment_pso_coefficients(X, y)
-    # results_stopping = run_experiment_stopping_criteria(X, y)
-    
-    # 3. Generazione output
-    # - Salvare risultati
-    # - Generare grafici
-    # - Report statistico
-    # - Analisi comportamento sciame
-    
-    print("Eseguire gli esperimenti rimuovendo i commenti sopra.")
-    print("Ricordate: minimo 30 run per configurazione!")
+    # 4. Creazione oggetto PSO con parametri di default
+    pso = ParticleSwarmOptimization()
+
+    # 5. Esecuzione PSO
+    result = pso.run(X, y_numeric, corrs_cf, corrs_ff, id_run=1)
+
+    # 6. Stampa log iterazioni
+    print("\n=== LOG ITERAZIONI ===")
+    for iter_data in result['logger'].iterations_data:
+        print(f"Iter {iter_data['iteration']:03d} | "
+              f"GBest: {iter_data['gbest_fitness']:.4f} | "
+              f"Avg: {iter_data['avg_fitness']:.4f} | "
+              f"Dispersion: {iter_data['dispersion']:.4f} | "
+              f"AvgVel: {iter_data['avg_velocity']:.4f} | "
+              f"Selected Features: {iter_data['selected_features_count']}")
+
+    # 7. Stampa riepilogo run
+    best_run = result['logger'].run_times[0]  # singolo run
+    print("\n=== RUN SUMMARY ===")
+    print(f"Best Fitness: {best_run['best_fitness']:.4f}")
+    print(f"Selected Features: {best_run['selected_features_count']}")
+    print(f"Iterations Completed: {best_run['iterations_completed']}")
+    print(f"Execution Time: {best_run['execution_time']:.2f} sec")
+    print(f"GBest Position: {best_run['best_position']}")
+
