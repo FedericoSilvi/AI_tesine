@@ -108,7 +108,7 @@ class Particle:
 # =============================================================================
 # FUNZIONE FITNESS
 # =============================================================================
-def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series, r_cf: np.ndarray, r_ff: np.ndarray) -> float:
+def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series) -> float:
     """
     Calcola il fitness basato sulla correlation analysis.
 
@@ -121,6 +121,8 @@ def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series,
         float: valore di fitness (più alto = migliore)
     """
     # TODO: Implementare la fitness function -DONE
+    r_cf = np.array([np.abs(X.iloc[:, i].corr(y_numeric)) for i in range(X.shape[1])])
+    r_ff = np.abs(X.corr().values)
 
     # Selected features extraction
     selected = np.where(particle.position==1)[0]
@@ -283,7 +285,7 @@ class ParticleSwarmOptimization:
 
     def evaluate_swarm(self, swarm: List[Particle],
                        X: pd.DataFrame, y: pd.Series,
-                       r_cf: np.ndarray, r_ff: np.ndarray) -> List[float]:
+                       ) -> List[float]:
         """
         Valuta il fitness di tutte le particelle dello sciame.
 
@@ -299,7 +301,7 @@ class ParticleSwarmOptimization:
         # Valuto ogni particella dello sciame
         for particle in swarm:
             # Calcolo della fitness della particella corrente
-            particle.fitness = fitness_correlation_based(particle, X, y,r_cf,r_ff)
+            particle.fitness = fitness_correlation_based(particle, X, y)
 
             # Aggiornamento del best personale (pbest) della particella
             # se la soluzione corrente è migliore di quelle precedenti
@@ -338,7 +340,7 @@ class ParticleSwarmOptimization:
         # Restituisco posizione e fitness del global best
         return self.gbest_position, self.gbest_fitness
 
-    def run(self, X: pd.DataFrame, y: pd.Series,r_cf: np.ndarray, r_ff: np.ndarray, id_run: int = 1) -> Dict:
+    def run(self, X: pd.DataFrame, y: pd.Series, id_run: int = 1) -> Dict:
         """
         Esegue l'algoritmo PSO.
 
@@ -361,11 +363,17 @@ class ParticleSwarmOptimization:
 
         iterations_completed = 1
 
+        w_start = 0.9
+        w_end = 0.1
+
         for iteration in range(self.max_iterations):
+            print(iterations_completed)
             iterations_completed += 1
 
+            self.w = w_start - (w_start - w_end) * (iteration / self.max_iterations)
+
             # 1. Valuto lo stormo ed aggiorno il global best se serve
-            self.evaluate_swarm(swarm, X, y,r_cf,r_ff)
+            self.evaluate_swarm(swarm, X, y)
 
             prev_best = self.gbest_fitness
             self.update_gbest(swarm)
@@ -410,7 +418,9 @@ class ParticleSwarmOptimization:
                 particle.position = update_position(particle)
 
         # Aggiorno il log globale
-        best_particle = max(swarm, key=lambda p: p.fitness)
+        best_particle = Particle(n_features=len(self.gbest_position))
+        best_particle.position = self.gbest_position.copy()
+        best_particle.fitness = self.gbest_fitness
 
         logger.log_run(
             run_id=id_run, # placeholder, va aggiunto run_id tra i parametri della funzione?
@@ -638,14 +648,14 @@ if __name__ == "__main__":
     y_numeric = y.map({'P': 1, 'H': 0})
 
     # 3. Calcolo correlazioni
-    corrs_cf = np.array([np.abs(X.iloc[:, i].corr(y_numeric)) for i in range(X.shape[1])])
-    corrs_ff = np.abs(X.corr().values)
+    #corrs_cf = np.array([np.abs(X.iloc[:, i].corr(y_numeric)) for i in range(X.shape[1])])
+    #corrs_ff = np.abs(X.corr().values)
 
     # 4. Creazione oggetto PSO con parametri di default
-    pso = ParticleSwarmOptimization()
+    pso = ParticleSwarmOptimization(max_iterations=100)
 
     # 5. Esecuzione PSO
-    result = pso.run(X, y_numeric, corrs_cf, corrs_ff, id_run=1)
+    result = pso.run(X, y_numeric, id_run=1)
 
     # 6. Stampa log iterazioni
     print("\n=== LOG ITERAZIONI ===")
@@ -665,4 +675,14 @@ if __name__ == "__main__":
     print(f"Iterations Completed: {best_run['iterations_completed']}")
     print(f"Execution Time: {best_run['execution_time']:.2f} sec")
     print(f"GBest Position: {best_run['best_position']}")
+
+    print("\n\n\n\n=== FREQUENZA SELEZIONE FEATURES (ORDINATE PER FREQUENZA) ===\n")
+    for feature, count in sorted(result['logger'].feature_counts.items(), key=lambda x: x[1], reverse=True):
+        print(f"Feature {feature} | Selezionata {count} volte")
+
+    print("\n\n\n\n=== FREQUENZA SELEZIONE FEATURES (ORDINATE PER ID) ===\n")
+    for feature, count in sorted(result['logger'].feature_counts.items()):
+        print(f"Feature {feature} | Selezionata {count} volte")
+
+
 
