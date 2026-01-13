@@ -187,7 +187,15 @@ def update_velocity(particle: Particle, gbest_position: np.ndarray,
         np.ndarray: nuova velocità
     """
     # TODO: Implementare
-    pass
+    
+    r1 = np.random.rand(particle.n_features)
+    r2 = np.random.rand(particle.n_features)
+
+    v = w*v + c1*r1*(particle.pbest_position - particle.position) + c2*r2*(gbest_position - particle.position)
+
+    v_lim = np.clip(v,-v_max,v_max)
+
+    return v_lim 
 
 
 def update_position(particle: Particle) -> np.ndarray:
