@@ -41,7 +41,18 @@ def load_darwin_dataset(filepath: str) -> Tuple[pd.DataFrame, pd.Series]:
         y: Series delle classi
     """
     # TODO: Implementare il caricamento
-    pass
+
+    # File loading 
+    dataset = pd.read_csv(filepath)
+
+    # Features and class extraction
+    features = dataset.iloc[:,1:-1] 
+    classes = dataset.iloc[:,-1]
+
+    # Missing values management: median substitution
+    features = features.fillna(features.median())
+    
+    return (features,classes)
 
 
 # =============================================================================
