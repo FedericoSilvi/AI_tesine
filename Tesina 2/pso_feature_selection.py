@@ -129,7 +129,7 @@ def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series,
     if k==0:
         return 0.0
 
-    # Mean on the feature-feature correlation 
+    # Mean on the feature-class correlation 
     r_cf_mean = np.mean(r_cf[selected])
 
     # Check if there is only 1 feature
@@ -166,6 +166,12 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
 
     # Clipping the velocity in order to avoid overflow
     x_check = np.clip(x,-50,50)
+    
+    # Check small velocity components
+    for vel in x_check:
+        if vel<1e-3:
+            vel=1
+
     # Sigmoid computation 
     z = 1/(1+np.exp(-x_check))
 
