@@ -165,19 +165,18 @@ def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series,
 # =============================================================================
 # AGGIORNAMENTO PSO
 # =============================================================================
-
 def sigmoid(x: np.ndarray) -> np.ndarray:
     """
     Funzione sigmoid per conversione velocità -> probabilità.
-    
+
     HINT: Gestire overflow per valori molto grandi/piccoli di x
     """
     # TODO: Implementare con gestione overflow
 
     # Clipping the velocity in order to avoid overflow
-    x_check = np.clip(x,-4,4)
+    x_check = np.clip(x, -4, 4)
     # Sigmoid computation 
-    z = 1/(1+np.exp(-x_check))
+    z = 1 / (1 + np.exp(-x_check))
 
     return z
 
@@ -842,15 +841,41 @@ def plot_convergence_curves(results: Dict, title: str = "Convergence Curves"):
     plt.show()
 
 
-def plot_fitness_boxplots(results: List[Dict], title: str = "Fitness Distribution"):
+def plot_fitness_boxplots(results: Dict, title: str = "Fitness Distribution"):
     """
     Genera box plot delle distribuzioni fitness.
 
     HINT: Un boxplot per ogni configurazione testata
     """
     # TODO: Implementare
-    pass
 
+
+    configurations = sorted(results.keys())
+    data_to_plot = []
+
+    for configuration in configurations:
+        runs  = results[configuration]
+        gbest_values = []
+
+        for run in runs:
+            logger = run["logger"]
+            gbest_iter = [it["gbest_fitness"] for it in logger.iterations_data]
+
+            gbest_values.append(min(gbest_iter))
+            gbest_values.append(max(gbest_iter))
+
+        data_to_plot.append(gbest_values)
+
+    labels = [str(cfg) for cfg in configurations]
+    plt.figure(figsize=(15, 6))
+    plt.boxplot(data_to_plot, tick_labels=labels, patch_artist=True)
+    plt.xticks(rotation=45, ha="right")
+    plt.xlabel("Configurazione parametri")
+    plt.ylabel("GBest Fitness (min e max per run)")
+    plt.title(title)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
 
 
 def plot_feature_frequency(results: dict, top_k: int = 20):
@@ -1180,6 +1205,9 @@ def main():
             sys.exit(1)
 
         # Aggregazione per swarm size
+
+        plot_fitness_boxplots(results)
+
         aggregated_by_swarm = {}
 
         for swarm_size, runs in results.items():
@@ -1209,12 +1237,11 @@ if __name__ == "__main__":
     # CONFIGURAZIONE
     # ============================================================
 
-    MODE = "run"          # "run" | "plot"
-    EXPERIMENT = "stop"   # "swarm" | "coeff" | "stop"
+    MODE = "plot"          # "run" | "plot"
+    EXPERIMENT = "swarm"   # "swarm" | "coeff" | "stop"
 
     N_RUNS = 30
     DATASET_PATH = "DARWIN.csv"
     PICKLE_FILE = f"risultati_{EXPERIMENT}.pkl"
 
     main()
-
