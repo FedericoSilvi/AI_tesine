@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import time
 from typing import Tuple, List, Dict
-
+import matpltolib.pyplot as plt
 # HINT: Considerate quali altre librerie potrebbero essere utili per
 # la valutazione delle correlazioni e la visualizzazione
 
@@ -590,7 +590,52 @@ def plot_convergence_curves(results: Dict, title: str = "Convergence Curves"):
     HINT: Media ± deviazione standard su tutti i run
     """
     # TODO: Implementare con matplotlib
-    pass
+    def plot_convergence_curves(results: Dict, title: str = "Convergence Curves"):
+    """
+    Genera curve di convergenza.
+
+    HINT: Media ± deviazione standard su tutti i run
+    """
+    # TODO: Implementare con matplotlib
+
+    logger = results["logger"]
+    
+    # Assumendo che logger.iteration_data contenga ora array/liste per ogni run
+    # o che i dati siano stati pre-aggregati.
+    # Esempio: avg_means e avg_stds sono array calcolati su N run per ogni iterazione.
+    
+    iters = np.array([it["iteration"] for it in logger.iterations_data])
+    avg_fitness = np.array([it["avg_fitness"] for it in logger.iterations_data])
+    std_fitness = np.array([it.get("std_fitness", 0) for it in logger.iterations_data]) # Deviazione standard
+    
+    best_fitness = np.array([it["gbest_fitness"] for it in logger.iterations_data])
+
+    opt = results["best_fitness"]
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+
+    # Plot della Media con Ombreggiatura (Deviazione Standard)
+    ax.plot(iters, avg_fitness, color='orange', linewidth=2, label='Swarm Average (Mean)')
+    ax.fill_between(iters, 
+                    avg_fitness - std_fitness, 
+                    avg_fitness + std_fitness, 
+                    color='orange', alpha=0.2, label='± Std Dev')
+
+    # Plot del Best
+    ax.plot(iters, best_fitness, color='blue', linewidth=2.5, label='Global Best')
+
+    # Linea dell'Ottimo Teorico
+    ax.axhline(opt, color='green', linestyle='--', linewidth=2, alpha=0.7, label='Target Optimum')
+
+    # Formattazione
+    ax.set_xlim(0, max(iters))
+    ax.set_xlabel('Iteration')
+    ax.set_ylabel('Fitness')
+    ax.set_title(title)
+    ax.legend(loc='upper right')
+    ax.grid(True, alpha=0.3)
+    
+    plt.show()
 
 
 def plot_fitness_boxplots(results: Dict, title: str = "Fitness Distribution"):
@@ -672,6 +717,8 @@ if __name__ == "__main__":
     print("\n\n\n\n=== FREQUENZA SELEZIONE FEATURES (ORDINATE PER ID) ===\n")
     for feature, count in sorted(result['logger'].feature_counts.items()):
         print(f"Feature {feature} | Selezionata {count} volte")
+
+
 
 
 
