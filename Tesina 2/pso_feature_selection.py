@@ -350,7 +350,7 @@ class ParticleSwarmOptimization:
         swarm = self.initialize_swarm(X.shape[1])
         no_improvement = 0
 
-        iterations_completed = 1
+        iterations_completed = 0
 
         w_start = 0.7
         w_end = 0.7 # lascio fisso
@@ -596,9 +596,12 @@ def plot_convergence_curves(results: Dict, title: str = "Convergence Curves"):
 
     logger = results["logger"]
 
-    # Assumendo che logger.iteration_data contenga ora array/liste per ogni run
-    # o che i dati siano stati pre-aggregati.
-    # Esempio: avg_means e avg_stds sono array calcolati su N run per ogni iterazione.
+    
+    # Estrazione delle grandezze di interesse:
+    # - iterazioni 
+    # - fitness media 
+    # - deviazione standard della fitness
+    # - migliori fitness 
 
     iters = np.array([it["iteration"] for it in logger.iterations_data])
     avg_fitness = np.array([it["avg_fitness"] for it in logger.iterations_data])
@@ -610,7 +613,7 @@ def plot_convergence_curves(results: Dict, title: str = "Convergence Curves"):
 
     fig, ax = plt.subplots(figsize=(12, 5))
 
-    # Plot della Media con Ombreggiatura (Deviazione Standard)
+    # Plotting
     ax.plot(iters, avg_fitness, color='orange', linewidth=2, label='Swarm Average (Mean)')
     ax.fill_between(iters, 
                     avg_fitness - std_fitness, 
@@ -620,7 +623,7 @@ def plot_convergence_curves(results: Dict, title: str = "Convergence Curves"):
     # Plot del Best
     ax.plot(iters, best_fitness, color='blue', linewidth=2.5, label='Global Best')
 
-    # Linea dell'Ottimo Teorico
+    # Linea ottima
     ax.axhline(opt, color='green', linestyle='--', linewidth=2, alpha=0.7, label='Target Optimum')
 
     # Formattazione
@@ -634,7 +637,7 @@ def plot_convergence_curves(results: Dict, title: str = "Convergence Curves"):
     plt.show()
 
 
-def plot_fitness_boxplots(results: Dict, title: str = "Fitness Distribution"):
+def plot_fitness_boxplots(results: List[Dict], title: str = "Fitness Distribution"):
     """
     Genera box plot delle distribuzioni fitness.
 
@@ -713,5 +716,6 @@ if __name__ == "__main__":
     print("\n\n\n\n=== FREQUENZA SELEZIONE FEATURES (ORDINATE PER ID) ===\n")
     for feature, count in sorted(result['logger'].feature_counts.items()):
         print(f"Feature {feature} | Selezionata {count} volte")
+
 
     plot_convergence_curves(results=result)
