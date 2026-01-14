@@ -176,6 +176,7 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
 
     return z
 
+
 def v_shaped_prob(x: np.ndarray) -> np.ndarray:
     """
     Funzione V-Shaped per convertire velocità -> probabilità di CAMBIAMENTO.
@@ -186,6 +187,7 @@ def v_shaped_prob(x: np.ndarray) -> np.ndarray:
     """
     # Non serve clipping per tanh, gestisce bene overflow
     return np.abs(np.tanh(x))
+
 
 def update_velocity(particle: Particle, gbest_position: np.ndarray,
                     w: float = 0.7, c1: float = 2.0, c2: float = 2.0,
@@ -458,18 +460,16 @@ class ParticleSwarmOptimization:
 
         # TODO: Implementare - DONE
 
-        # Estraggo le posizioni di tutte le particelle
-        # e le converto in una matrice NumPy
-        positions = np.array([particle.position for particle in swarm])
-
-        # Calcolo il centroide dello sciame come media delle posizioni
-        centroid = np.mean(positions, axis=0)
-
-        # Calcolo la distanza euclidea di ogni particella dal centroide
-        distances = np.linalg.norm(positions - centroid, axis=1)
-
-        # Restituisco la distanza media come misura di dispersione
-        return distances.mean()
+        positions = np.array([p.position for p in swarm])
+        n_particles = len(swarm)
+        n_features = positions.shape[1]
+        total_dist = 0
+        count = 0
+        for i in range(n_particles):
+            for j in range(i + 1, n_particles):
+                total_dist += np.sum(positions[i] != positions[j])
+                count += 1
+        return total_dist / count
 
     def calculate_average_velocity(self, swarm: List[Particle]) -> float:
         """
