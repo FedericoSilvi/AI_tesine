@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import time
 from typing import Tuple, List, Dict
-
+import matplotlib.pyplot as plt
 # HINT: Considerate quali altre librerie potrebbero essere utili per
 # la valutazione delle correlazioni e la visualizzazione
 
@@ -46,13 +46,13 @@ def load_darwin_dataset(filepath: str) -> Tuple[pd.DataFrame, pd.Series]:
     dataset = pd.read_csv(filepath)
 
     # Features and class extraction
-    features = dataset.iloc[:,1:-1]
-    classes = dataset.iloc[:,-1]
+    features = dataset.iloc[:, 1:-1]
+    classes = dataset.iloc[:, -1]
 
     # Missing values management: median substitution
     features = features.fillna(features.median())
 
-    return (features,classes)
+    return (features, classes)
 
 
 # =============================================================================
@@ -73,14 +73,16 @@ class Particle:
 
         # Posizione (binaria)
         # TODO: Inizializzare la posizione (random se non fornita) -DONE
+        # Posizione (binaria)
         if position is not None:
-            self.position=position
+            self.position = position
         else:
-         self.position = np.random.randint(0,2,size=self.n_features)
+            # Genera 1 solo se il random è < 0.1 (10% di probabilità)
+            self.position = (np.random.rand(self.n_features) < 0.1).astype(int)
 
         # Velocità (continua)
         # HINT: Inizializzare in range ragionevole, es. [-4, 4]
-        self.velocity = np.random.uniform(-4,4,size=self.n_features)
+        self.velocity = np.random.uniform(-4, 4, size=self.n_features)
 
         # Personal best
         self.pbest_position = None
@@ -95,12 +97,11 @@ class Particle:
 
         return np.sum(self.position)
 
-
     def update_pbest(self):
         """Aggiorna il personal best se il fitness corrente è migliore."""
         # TODO: Implementare  -DONE
 
-        if self.pbest_fitness<self.fitness:
+        if self.pbest_fitness < self.fitness:
             self.pbest_fitness = self.fitness
             self.pbest_position = self.position.copy()
 
@@ -108,7 +109,8 @@ class Particle:
 # =============================================================================
 # FUNZIONE FITNESS
 # =============================================================================
-def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series, r_cf: np.ndarray, r_ff: np.ndarray) -> float:
+def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series, r_cf: np.ndarray,
+                              r_ff: np.ndarray) -> float:
     """
     Calcola il fitness basato sulla correlation analysis.
 
@@ -121,62 +123,43 @@ def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series,
         float: valore di fitness (più alto = migliore)
     """
     # TODO: Implementare la fitness function -DONE
-    
 
     # Selected features extraction
-    selected = np.where(particle.position==1)[0]
+    selected = np.where(particle.position == 1)[0]
     k = len(selected)
 
     # Check on k
-    if k==0:
+    if k == 0:
         return 0.0
 
     # Mean on the feature-class correlation
     r_cf_mean = np.mean(r_cf[selected])
 
     # Check if there is only 1 feature
-    if k>1:
+    if k > 1:
         # Submatrix of selected features (dimension k x k)
-        sub_matrix = r_ff[np.ix_(selected,selected)]
+        sub_matrix = r_ff[np.ix_(selected, selected)]
 
         # Formula: r_ff_mean = (Total Sum - Diagonal Sum)/(k^2-k)
-        r_ff_mean = (np.sum(sub_matrix)-k)/(k**2-k)
+        r_ff_mean = (np.sum(sub_matrix) - k) / (k ** 2 - k)
     else:
-        r_ff_mean= 0.0
+        r_ff_mean = 0.0
 
     # Fitness computation
     # Formula: CFS = (k*r_cf_mean)/sqrt(k+k*(k-1)*r_ff_mean)
 
-    num = k*r_cf_mean
-    den = np.sqrt(k+k*(k-1)*r_ff_mean)
+    num = k * r_cf_mean
+    den = np.sqrt(k + k * (k - 1) * r_ff_mean)
 
     if den == 0:
         return 0.0
     else:
-        return num/den
+        return num / den
+
 
 # =============================================================================
 # AGGIORNAMENTO PSO
 # =============================================================================
-def sigmoid(x: np.ndarray) -> np.ndarray:
-    """
-    Funzione sigmoid per conversione velocità -> probabilità.
-
-    HINT: Gestire overflow per valori molto grandi/piccoli di x
-    """
-    # TODO: Implementare con gestione overflow -DONE
-
-    # Clipping the velocity in order to avoid overflow
-    x_check = np.clip(x,-50,50)
-
-
-
-    # Sigmoid computation
-    z = 1/(1+np.exp(-x_check))
-
-    return z
-
-
 def v_shaped_prob(x: np.ndarray) -> np.ndarray:
     """
     Funzione V-Shaped per convertire velocità -> probabilità di CAMBIAMENTO.
@@ -208,46 +191,42 @@ def update_velocity(particle: Particle, gbest_position: np.ndarray,
     r1 = np.random.rand(particle.n_features)
     r2 = np.random.rand(particle.n_features)
 
-    v = w*particle.velocity + c1*r1*(particle.pbest_position - particle.position) + c2*r2*(gbest_position - particle.position)
+    v = w * particle.velocity + c1 * r1 * (particle.pbest_position - particle.position) + c2 * r2 * (
+                gbest_position - particle.position)
 
-    v_lim = np.clip(v,-v_max,v_max)
+    v_lim = np.clip(v, -v_max, v_max)
 
     return v_lim
 
 
 def update_position(particle: Particle) -> np.ndarray:
     """
-    Aggiorna la posizione della particella (versione binaria).
+    Aggiorna la posizione della particella (Logica V-Shaped).
 
-    HINT:
-    - Usare sigmoid(velocity) come probabilità
-    - La nuova posizione è 1 se random < sigmoid(v), altrimenti 0
-    - Gestire il caso in cui nessuna feature è selezionata
-
-    Returns:
-        np.ndarray: nuova posizione binaria
+    Logica:
+    - Calcolo probabilità di FLIP (cambio stato) basata sulla velocità
+    - Eseguo XOR logico tra posizione vecchia e maschera di cambiamento
     """
-    # TODO: Implementare -DONE
+    # 1. Calcolo probabilità di cambiare stato
+    prob_flip = v_shaped_prob(particle.velocity)
 
-    n_features = particle.n_features
+    # 2. Genero numeri casuali per decidere se flippare
+    random_values = np.random.rand(particle.n_features)
 
-    # Apply the sigmoid to particle's velocity
-    prob = v_shaped_prob(particle.velocity)
+    # 3. Creo una maschera: True dove devo cambiare valore
+    flip_mask = random_values < prob_flip
 
-    random = np.random.rand(particle.n_features)
-    pos = np.zeros(particle.n_features)
+    # 4. Aggiorno la posizione:
+    # Se flip_mask è False (0) -> mantengo valore (0^0=0, 1^0=1)
+    # Se flip_mask è True (1)  -> inverto valore (0^1=1, 1^1=0)
+    new_position = np.logical_xor(particle.position, flip_mask).astype(int)
 
-    # Extract the indices for the update
-    indices = np.where(random<prob)[0]
+    # Gestione caso degenere: se tutte le feature sono 0, ne accendo una random
+    if np.sum(new_position) == 0:
+        fix_idx = np.random.randint(0, particle.n_features)
+        new_position[fix_idx] = 1
 
-    # Position update
-    pos[indices] = 1
-
-    # When no feature is selected, the position is chosen randomly
-    if len(indices) == 0:
-        pos = np.random.randint(0,2,size=n_features)
-
-    return pos
+    return new_position
 
 
 # =============================================================================
@@ -263,17 +242,17 @@ class ParticleSwarmOptimization:
 
     def __init__(self,
                  swarm_size: int = 100,
-                 w: float = 0.7,           # inerzia
-                 c1: float = 2.0,          # coefficiente cognitivo
-                 c2: float = 2.0,          # coefficiente sociale
-                 v_max: float = 4.0,       # velocità massima
+                 w: float = 0.7,  # inerzia
+                 c1: float = 2.0,  # coefficiente cognitivo
+                 c2: float = 2.0,  # coefficiente sociale
+                 v_max: float = 4.0,  # velocità massima
                  max_iterations: int = 50,
                  convergence_threshold: int = None,  # iterazioni senza miglioramento
                  convergence_tolerance: float = 1e-5,
                  random_seed: int = SEED):
 
         # TODO: Inizializzare i parametri - DONE
-        np.random.seed(random_seed) # imposto il seed per il generatore randomico
+        np.random.seed(random_seed)  # imposto il seed per il generatore randomico
 
         self.swarm_size = swarm_size
         self.w = w
@@ -291,8 +270,7 @@ class ParticleSwarmOptimization:
     def initialize_swarm(self, n_features: int) -> List[Particle]:
         """Inizializza lo sciame di particelle."""
         # TODO: Implementare - DONE
-        return [Particle(n_features) for _ in range(self.swarm_size)] # Creo lo sciame come una lista di particelle
-
+        return [Particle(n_features) for _ in range(self.swarm_size)]  # Creo lo sciame come una lista di particelle
 
     def evaluate_swarm(self, swarm: List[Particle],
                        X: pd.DataFrame, y: pd.Series,
@@ -312,7 +290,7 @@ class ParticleSwarmOptimization:
         # Valuto ogni particella dello sciame
         for particle in swarm:
             # Calcolo della fitness della particella corrente
-            particle.fitness = fitness_correlation_based(particle, X, y,r_cf,r_ff)
+            particle.fitness = fitness_correlation_based(particle, X, y, r_cf, r_ff)
 
             # Aggiornamento del best personale (pbest) della particella
             # se la soluzione corrente è migliore di quelle precedenti
@@ -374,23 +352,26 @@ class ParticleSwarmOptimization:
 
         iterations_completed = 1
 
-        w_start = 0.9
-        w_end = 0.1
+        w_start = 0.7
+        w_end = 0.7 # lascio fisso
+        self.c1 = 1
+        self.c2 = 1
 
         for iteration in range(self.max_iterations):
-            print(iterations_completed)
+            #print(iterations_completed)
             iterations_completed += 1
 
             self.w = w_start - (w_start - w_end) * (iteration / self.max_iterations)
 
             # 1. Valuto lo stormo ed aggiorno il global best se serve
-            self.evaluate_swarm(swarm, X, y,r_cf,r_ff)
+            self.evaluate_swarm(swarm, X, y, r_cf, r_ff)
 
             prev_best = self.gbest_fitness
             self.update_gbest(swarm)
 
             # Metriche per il logging
             avg_fitness = float(np.mean([particle.fitness for particle in swarm]))
+            std_fitness = float(np.std([particle.fitness for particle in swarm]))
             dispersion = self.calculate_swarm_dispersion(swarm)
             avg_velocity = self.calculate_average_velocity(swarm)
 
@@ -399,6 +380,7 @@ class ParticleSwarmOptimization:
                 iteration=iteration,
                 gbest_fitness=self.gbest_fitness,
                 avg_fitness=avg_fitness,
+                std_fitness=std_fitness,
                 dispersion=dispersion,
                 avg_velocity=avg_velocity,
                 selected_features=self.gbest_position
@@ -425,7 +407,7 @@ class ParticleSwarmOptimization:
             # 3. Aggiorno posizione e velocità delle particelle
             for particle in swarm:
                 particle.velocity = update_velocity(particle, self.gbest_position,
-                                self.w, self.c1, self.c2, self.v_max)
+                                                    self.w, self.c1, self.c2, self.v_max)
                 particle.position = update_position(particle)
 
         # Aggiorno il log globale
@@ -434,7 +416,7 @@ class ParticleSwarmOptimization:
         best_particle.fitness = self.gbest_fitness
 
         logger.log_run(
-            run_id=id_run, # placeholder, va aggiunto run_id tra i parametri della funzione?
+            run_id=id_run,  # placeholder, va aggiunto run_id tra i parametri della funzione?
             best_particle=best_particle,
             execution_time=time.time() - start_time,
             iterations_completed=iterations_completed
@@ -504,7 +486,7 @@ class ExperimentLogger:
         self.swarm_behavior = []  # dispersione, velocità media, etc.
 
     def log_iteration(self, iteration: int, gbest_fitness: float,
-                      avg_fitness: float, dispersion: float,
+                      avg_fitness: float, std_fitness: float, dispersion: float,
                       avg_velocity: float, selected_features: np.ndarray):
         """Logga i dati di un'iterazione."""
         # TODO: Implementare - DONE
@@ -512,6 +494,7 @@ class ExperimentLogger:
             "iteration": iteration,
             "gbest_fitness": gbest_fitness,
             "avg_fitness": avg_fitness,
+            "std_fitness": std_fitness,
             "dispersion": dispersion,
             "avg_velocity": avg_velocity,
             "selected_features_count": int(selected_features.sum())
@@ -610,7 +593,45 @@ def plot_convergence_curves(results: Dict, title: str = "Convergence Curves"):
     HINT: Media ± deviazione standard su tutti i run
     """
     # TODO: Implementare con matplotlib
-    pass
+
+    logger = results["logger"]
+
+    # Assumendo che logger.iteration_data contenga ora array/liste per ogni run
+    # o che i dati siano stati pre-aggregati.
+    # Esempio: avg_means e avg_stds sono array calcolati su N run per ogni iterazione.
+
+    iters = np.array([it["iteration"] for it in logger.iterations_data])
+    avg_fitness = np.array([it["avg_fitness"] for it in logger.iterations_data])
+    std_fitness = np.array([it["std_fitness"] for it in logger.iterations_data]) # Deviazione standard
+
+    best_fitness = np.array([it["gbest_fitness"] for it in logger.iterations_data])
+
+    opt = results["best_fitness"]
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+
+    # Plot della Media con Ombreggiatura (Deviazione Standard)
+    ax.plot(iters, avg_fitness, color='orange', linewidth=2, label='Swarm Average (Mean)')
+    ax.fill_between(iters, 
+                    avg_fitness - std_fitness, 
+                    avg_fitness + std_fitness, 
+                    color='orange', alpha=0.2, label='± Std Dev')
+
+    # Plot del Best
+    ax.plot(iters, best_fitness, color='blue', linewidth=2.5, label='Global Best')
+
+    # Linea dell'Ottimo Teorico
+    ax.axhline(opt, color='green', linestyle='--', linewidth=2, alpha=0.7, label='Target Optimum')
+
+    # Formattazione
+    ax.set_xlim(0, max(iters))
+    ax.set_xlabel('Iteration')
+    ax.set_ylabel('Fitness')
+    ax.set_title(title)
+    ax.legend(loc='upper right')
+    ax.grid(True, alpha=0.3)
+
+    plt.show()
 
 
 def plot_fitness_boxplots(results: Dict, title: str = "Fitness Distribution"):
@@ -651,7 +672,7 @@ def plot_swarm_behavior(swarm_data: List[Dict], title: str = "Swarm Behavior"):
 # =============================================================================
 if __name__ == "__main__":
     # 1. Caricamento dati
-    X, y = load_darwin_dataset("DARWIN.csv")
+    X, y = load_darwin_dataset("Tesina 2/DARWIN.csv")
 
     # 2. Conversione target da stringa a numerico (P=1, H=0)
     y_numeric = y.map({'P': 1, 'H': 0})
@@ -664,7 +685,7 @@ if __name__ == "__main__":
     pso = ParticleSwarmOptimization(max_iterations=100)
 
     # 5. Esecuzione PSO
-    result = pso.run(X, y_numeric, r_cf,r_ff, id_run=1)
+    result = pso.run(X, y_numeric, r_cf, r_ff, id_run=1)
 
     # 6. Stampa log iterazioni
     print("\n=== LOG ITERAZIONI ===")
@@ -693,6 +714,4 @@ if __name__ == "__main__":
     for feature, count in sorted(result['logger'].feature_counts.items()):
         print(f"Feature {feature} | Selezionata {count} volte")
 
-
-
-
+    plot_convergence_curves(results=result)
