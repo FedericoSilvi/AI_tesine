@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import time
 from typing import Tuple, List, Dict
-
+import matpltolib.pyplot as plt
 # HINT: Considerate quali altre librerie potrebbero essere utili per
 # la valutazione delle correlazioni e la visualizzazione
 
@@ -717,6 +717,7 @@ if __name__ == "__main__":
     print("\n\n\n\n=== FREQUENZA SELEZIONE FEATURES (ORDINATE PER ID) ===\n")
     for feature, count in sorted(result['logger'].feature_counts.items()):
         print(f"Feature {feature} | Selezionata {count} volte")
+
 
 
 
