@@ -165,6 +165,23 @@ def fitness_correlation_based(particle: Particle, X: pd.DataFrame, y: pd.Series,
 # =============================================================================
 # AGGIORNAMENTO PSO
 # =============================================================================
+
+def sigmoid(x: np.ndarray) -> np.ndarray:
+    """
+    Funzione sigmoid per conversione velocità -> probabilità.
+    
+    HINT: Gestire overflow per valori molto grandi/piccoli di x
+    """
+    # TODO: Implementare con gestione overflow
+
+    # Clipping the velocity in order to avoid overflow
+    x_check = np.clip(x,-4,4)
+    # Sigmoid computation 
+    z = 1/(1+np.exp(-x_check))
+
+    return z
+
+
 def v_shaped_prob(x: np.ndarray) -> np.ndarray:
     """
     Funzione V-Shaped per convertire velocità -> probabilità di CAMBIAMENTO.
@@ -1200,3 +1217,4 @@ if __name__ == "__main__":
     PICKLE_FILE = f"risultati_{EXPERIMENT}.pkl"
 
     main()
+
