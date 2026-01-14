@@ -176,6 +176,16 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
 
     return z
 
+def v_shaped_prob(x: np.ndarray) -> np.ndarray:
+    """
+    Funzione V-Shaped per convertire velocità -> probabilità di CAMBIAMENTO.
+    Usa la tangente iperbolica assoluta.
+
+    Se v = 0 -> prob = 0 (Nessun cambiamento, la particella è stabile)
+    Se v alto -> prob -> 1 (Alta probabilità di invertire il bit)
+    """
+    # Non serve clipping per tanh, gestisce bene overflow
+    return np.abs(np.tanh(x))
 
 def update_velocity(particle: Particle, gbest_position: np.ndarray,
                     w: float = 0.7, c1: float = 2.0, c2: float = 2.0,
@@ -220,7 +230,7 @@ def update_position(particle: Particle) -> np.ndarray:
     n_features = particle.n_features
 
     # Apply the sigmoid to particle's velocity
-    prob = sigmoid(particle.velocity)
+    prob = v_shaped_prob(particle.velocity)
 
     random = np.random.rand(particle.n_features)
     pos = np.zeros(particle.n_features)
