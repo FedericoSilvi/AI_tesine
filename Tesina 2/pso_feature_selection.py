@@ -9,12 +9,17 @@ HINT: Questo script fornisce una struttura base. Dovrete:
 - Implementare l'aggiornamento velocità/posizione per problemi binari
 - Gestire correttamente i parametri e le metriche
 """
+import sys
 
 import numpy as np
 import pandas as pd
 import time
 from typing import Tuple, List, Dict
 import matplotlib.pyplot as plt
+import pickle
+from copy import deepcopy
+from itertools import product
+
 # HINT: Considerate quali altre librerie potrebbero essere utili per
 # la valutazione delle correlazioni e la visualizzazione
 
@@ -192,7 +197,7 @@ def update_velocity(particle: Particle, gbest_position: np.ndarray,
     r2 = np.random.rand(particle.n_features)
 
     v = w * particle.velocity + c1 * r1 * (particle.pbest_position - particle.position) + c2 * r2 * (
-                gbest_position - particle.position)
+            gbest_position - particle.position)
 
     v_lim = np.clip(v, -v_max, v_max)
 
@@ -353,12 +358,12 @@ class ParticleSwarmOptimization:
         iterations_completed = 0
 
         w_start = 0.7
-        w_end = 0.7 # lascio fisso
+        w_end = 0.7  # lascio fisso
         self.c1 = 1
         self.c2 = 1
 
         for iteration in range(self.max_iterations):
-            #print(iterations_completed)
+            # print(iterations_completed)
             iterations_completed += 1
 
             self.w = w_start - (w_start - w_end) * (iteration / self.max_iterations)
@@ -535,9 +540,91 @@ def run_experiment_swarm_size(X: pd.DataFrame, y: pd.Series,
     Returns:
         Dict con risultati aggregati per ogni dimensione
     """
-    swarm_sizes = [20, 50, 100, 200, 500]
+
     # TODO: Implementare ciclo esperimenti
-    pass
+
+    swarm_sizes = [20, 50, 100, 200, 500]
+    results = {}
+
+    # File di output
+    output_file = "experiment_swarm_size.txt"
+
+    # Calcolo correlazioni
+    y_numeric = y
+    r_cf = np.array([np.abs(X.iloc[:, i].corr(y_numeric)) for i in range(X.shape[1])])
+    r_ff = np.abs(X.corr().values)
+
+    global_run_id = 1
+
+    with open(output_file, "w", encoding="utf-8") as f:
+
+        f.write("=== ESPERIMENTO: SWARM SIZE ===\n\n")
+
+        for swarm_size in swarm_sizes:
+
+            print(f"\n=== Avvio test swarm size = {swarm_size} ===")
+            f.write(f"\n\n==============================\n")
+            f.write(f"SWARM SIZE = {swarm_size}\n")
+            f.write(f"==============================\n\n")
+
+            results[swarm_size] = []
+
+            for run_idx in range(1, n_runs + 1):
+
+                print(f"[Swarm size = {swarm_size}] Run {run_idx}/{n_runs} in corso...")
+
+                pso = ParticleSwarmOptimization(
+                    swarm_size=swarm_size,
+                    max_iterations=100
+                )
+
+                result = pso.run(
+                    X=X,
+                    y=y_numeric,
+                    r_cf=r_cf,
+                    r_ff=r_ff,
+                    id_run=global_run_id
+                )
+
+                logger = result["logger"]
+
+                # Salvataggio su file
+                f.write(f"--- RUN ID {global_run_id} ---\n")
+                f.write(f"Swarm size: {swarm_size}\n")
+                f.write(f"Best fitness: {result['best_fitness']:.6f}\n")
+                f.write(f"Selected features: {result['selected_features']}\n")
+                f.write(f"Iterations: {result['iterations']}\n")
+                f.write(f"Execution time: {result['execution_time']:.2f} sec\n\n")
+
+                f.write("LOG ITERAZIONI:\n")
+                for it in logger.iterations_data:
+                    f.write(
+                        f"Iter {it['iteration']:03d} | "
+                        f"GBest {it['gbest_fitness']:.6f} | "
+                        f"Avg {it['avg_fitness']:.6f} | "
+                        f"Std {it['std_fitness']:.6f} | "
+                        f"Disp {it['dispersion']:.6f} | "
+                        f"AvgVel {it['avg_velocity']:.6f} | "
+                        f"Selected {it['selected_features_count']}\n"
+                    )
+
+                f.write("\nFREQUENZA SELEZIONE FEATURES:\n")
+                for feat, cnt in sorted(logger.feature_counts.items()):
+                    f.write(f"Feature {feat} -> {cnt}\n")
+
+                f.write("\n\n")
+
+                # Salvataggio risultati
+                results[swarm_size].append(result)
+
+                print(f"[Swarm size = {swarm_size}] Run {run_idx}/{n_runs} COMPLETATA")
+
+                global_run_id += 1
+
+    print("\n=== ESPERIMENTO SWARM SIZE COMPLETATO ===")
+    print(f"Log salvati in: {output_file}")
+
+    return results
 
 
 def run_experiment_pso_coefficients(X: pd.DataFrame, y: pd.Series,
@@ -564,23 +651,125 @@ def run_experiment_pso_coefficients(X: pd.DataFrame, y: pd.Series,
 
 
 def run_experiment_stopping_criteria(X: pd.DataFrame, y: pd.Series,
-                                     n_runs: int = 30) -> Dict:
+                                     n_runs: int = 30,
+                                     section_id: int = 1,
+                                     n_sections: int = 1) -> dict:
     """
-    Scenario 3: Test criteri di stop
+    Scenario 3: Test criteri di stop, con suddivisione in sezioni per più computer.
 
-    HINT:
-    - Iterazioni fisse: [50, 100, 200]
-    - Convergenza (soglie): [10, 20, 30] iterazioni senza miglioramento
-    - Tolleranze: [1e-4, 1e-5, 1e-6]
+    Args:
+        X, y: dataset
+        n_runs: numero di run per combinazione
+        section_id: sezione da eseguire (1..n_sections)
+        n_sections: in quante sezioni dividere il test
 
     Returns:
-        Dict con risultati per ogni criterio
+        dict dei risultati della sezione
     """
+
     fixed_iterations = [50, 100, 200]
     convergence_thresholds = [10, 20, 30]
     tolerances = [1e-4, 1e-5, 1e-6]
-    # TODO: Implementare esperimenti
-    pass
+
+    all_combinations = list(product(fixed_iterations, convergence_thresholds, tolerances))
+    total_combinations = len(all_combinations)
+
+    # Suddivisione in sezioni
+    # Ogni sezione prende le combinazioni i % n_sections == section_id-1
+    section_combinations = [comb for i, comb in enumerate(all_combinations) if i % n_sections == section_id - 1]
+
+    print("=== TUTTE LE COMBINAZIONI ===")
+    for i, comb in enumerate(all_combinations, 1):
+        print(f"{i:02d}: MaxIter={comb[0]}, Threshold={comb[1]}, Tol={comb[2]}")
+
+    print(f"\n=== COMBINAZIONI ASSEGNATE ALLA SEZIONE {section_id}/{n_sections} ===")
+    for i, comb in enumerate(section_combinations, 1):
+        print(f"{i:02d}: MaxIter={comb[0]}, Threshold={comb[1]}, Tol={comb[2]}")
+
+    results = {}
+    output_file = f"experiment_stopping_criteria_section_{section_id}.txt"
+
+    # Correlazioni per fitness
+    y_numeric = y
+    r_cf = np.array([np.abs(X.iloc[:, i].corr(y_numeric)) for i in range(X.shape[1])])
+    r_ff = np.abs(X.corr().values)
+
+    global_run_id = 1
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(f"=== ESPERIMENTO STOPPING CRITERIA - SEZIONE {section_id}/{n_sections} ===\n\n")
+
+        for max_iter, threshold, tol in section_combinations:
+            key = (max_iter, threshold, tol)
+            results[key] = []
+
+            f.write("\n\n==============================\n")
+            f.write(f"Max Iter: {max_iter} | Conv Thresh: {threshold} | Tol: {tol}\n")
+            f.write("==============================\n\n")
+
+            print(f"\n=== Avvio test Max Iter={max_iter}, Conv Thresh={threshold}, Tol={tol} ===")
+
+            for run_idx in range(1, n_runs + 1):
+                print(f"[Run {run_idx}/{n_runs}] in corso...")
+
+                pso = ParticleSwarmOptimization(
+                    swarm_size=100,
+                    max_iterations=max_iter,
+                    convergence_threshold=threshold,
+                    convergence_tolerance=tol
+                )
+
+                result = pso.run(
+                    X=X,
+                    y=y_numeric,
+                    r_cf=r_cf,
+                    r_ff=r_ff,
+                    id_run=global_run_id
+                )
+
+                logger = result["logger"]
+
+                # Logging su file
+                f.write(f"--- RUN ID {global_run_id} ---\n")
+                f.write(f"Max Iter: {max_iter}\n")
+                f.write(f"Conv Thresh: {threshold}\n")
+                f.write(f"Tolerance: {tol}\n")
+                f.write(f"Best fitness: {result['best_fitness']:.6f}\n")
+                f.write(f"Selected features: {result['selected_features']}\n")
+                f.write(f"Iterations: {result['iterations']}\n")
+                f.write(f"Execution time: {result['execution_time']:.2f} sec\n\n")
+
+                f.write("LOG ITERAZIONI:\n")
+                for it in logger.iterations_data:
+                    f.write(
+                        f"Iter {it['iteration']:03d} | "
+                        f"GBest {it['gbest_fitness']:.6f} | "
+                        f"Avg {it['avg_fitness']:.6f} | "
+                        f"Std {it['std_fitness']:.6f} | "
+                        f"Disp {it['dispersion']:.6f} | "
+                        f"AvgVel {it['avg_velocity']:.6f} | "
+                        f"Selected {it['selected_features_count']}\n"
+                    )
+
+                f.write("\nFREQUENZA SELEZIONE FEATURES:\n")
+                for feat, cnt in sorted(logger.feature_counts.items()):
+                    f.write(f"Feature {feat} -> {cnt}\n")
+
+                f.write("\n\n")
+
+                results[key].append(result)
+                global_run_id += 1
+
+    print(f"\n=== SEZIONE {section_id}/{n_sections} COMPLETATA ===")
+    print(f"Log salvati in: {output_file}")
+
+    # Salvataggio pickle parziale
+    #pickle_file = f"stopping_criteria_results_section_{section_id}.pkl"
+    #with open(pickle_file, "wb") as f:
+    #    pickle.dump(results, f)
+    #print(f"Risultati salvati in: {pickle_file}")
+
+    return results
 
 
 # =============================================================================
@@ -596,16 +785,15 @@ def plot_convergence_curves(results: Dict, title: str = "Convergence Curves"):
 
     logger = results["logger"]
 
-    
     # Estrazione delle grandezze di interesse:
-    # - iterazioni 
-    # - fitness media 
+    # - iterazioni
+    # - fitness media
     # - deviazione standard della fitness
-    # - migliori fitness 
+    # - migliori fitness
 
     iters = np.array([it["iteration"] for it in logger.iterations_data])
     avg_fitness = np.array([it["avg_fitness"] for it in logger.iterations_data])
-    std_fitness = np.array([it["std_fitness"] for it in logger.iterations_data]) # Deviazione standard
+    std_fitness = np.array([it["std_fitness"] for it in logger.iterations_data])  # Deviazione standard
 
     best_fitness = np.array([it["gbest_fitness"] for it in logger.iterations_data])
 
@@ -615,9 +803,9 @@ def plot_convergence_curves(results: Dict, title: str = "Convergence Curves"):
 
     # Plotting
     ax.plot(iters, avg_fitness, color='orange', linewidth=2, label='Swarm Average (Mean)')
-    ax.fill_between(iters, 
-                    avg_fitness - std_fitness, 
-                    avg_fitness + std_fitness, 
+    ax.fill_between(iters,
+                    avg_fitness - std_fitness,
+                    avg_fitness + std_fitness,
                     color='orange', alpha=0.2, label='± Std Dev')
 
     # Plot del Best
@@ -647,15 +835,45 @@ def plot_fitness_boxplots(results: List[Dict], title: str = "Fitness Distributio
     pass
 
 
-def plot_feature_frequency(feature_counts: Dict, feature_names: List[str]):
-    """
-    Istogramma frequenza selezione features.
 
-    HINT: Mostrare le top-k features più frequentemente selezionate
+def plot_feature_frequency(results: dict, top_k: int = 20):
     """
-    # TODO: Implementare
-    pass
+    Genera un bar graph per ogni swarm size con le top-k feature
+    più frequentemente selezionate in media sui run.
 
+    Args:
+        results: dizionario dei risultati salvati (per swarm size)
+        top_k: numero di feature da mostrare
+    """
+    for swarm_size, runs in results.items():
+        # Aggrego le frequenze di selezione per tutte le run
+        aggregated_counts = {}
+        for run in runs:
+            feature_counts = run["logger"].feature_counts
+            for feat_idx, count in feature_counts.items():
+                aggregated_counts[feat_idx] = aggregated_counts.get(feat_idx, 0) + count
+
+        # Calcolo la media su tutte le run
+        n_runs = len(runs)
+        avg_counts = {feat: aggregated_counts[feat] / n_runs for feat in aggregated_counts}
+
+        # Ordino le feature per frequenza media decrescente
+        sorted_feats = sorted(avg_counts.items(), key=lambda x: x[1], reverse=True)[:top_k]
+
+        # Estrazione dei dati per il plot
+        feature_indices = [f"F{feat}" for feat, _ in sorted_feats]
+        frequencies = [freq for _, freq in sorted_feats]
+
+        # Plot
+        plt.figure(figsize=(12, 6))
+        plt.bar(range(len(frequencies)), frequencies, color='skyblue')
+        plt.xticks(range(len(frequencies)), feature_indices, rotation=45, ha='right')
+        plt.xlabel("Feature")
+        plt.ylabel("Frequenza media di selezione")
+        plt.title(f"Top {top_k} Features - Swarm Size {swarm_size}")
+        plt.grid(axis='y', alpha=0.3)
+        plt.tight_layout()
+        plt.show()
 
 def plot_swarm_behavior(swarm_data: List[Dict], title: str = "Swarm Behavior"):
     """
@@ -670,52 +888,315 @@ def plot_swarm_behavior(swarm_data: List[Dict], title: str = "Swarm Behavior"):
     pass
 
 
+def plot_all_swarms_convergence(aggregated_results_by_swarm: dict,
+                                title: str = "Convergence Comparison Across Swarm Sizes"):
+    """
+    Plotta sullo stesso grafico:
+    - Swarm Average (media su 30 run)
+    - Global Best (media su 30 run)
+    per tutte le swarm size.
+    """
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    fig, ax = plt.subplots(figsize=(13, 6))
+
+    # Target "optimum" = miglior fitness osservata globalmente
+    global_optimum = max(
+        res["best_fitness"]
+        for res in aggregated_results_by_swarm.values()
+    )
+
+    for swarm_size, results in aggregated_results_by_swarm.items():
+        logger = results["logger"]
+
+        iters = np.array([it["iteration"] for it in logger.iterations_data])
+        avg_fitness = np.array([it["avg_fitness"] for it in logger.iterations_data])
+        gbest_fitness = np.array([it["gbest_fitness"] for it in logger.iterations_data])
+
+        # Swarm Average (tratteggiata)
+        ax.plot(
+            iters,
+            avg_fitness,
+            linestyle="--",
+            linewidth=2,
+            label=f"Swarm Avg (S={swarm_size})"
+        )
+
+        # Global Best (continua)
+        ax.plot(
+            iters,
+            gbest_fitness,
+            linewidth=2.5,
+            label=f"Global Best (S={swarm_size})"
+        )
+
+    # Target Optimum
+    ax.axhline(
+        global_optimum,
+        color="black",
+        linestyle=":",
+        linewidth=2,
+        label="Target Optimum (Best observed)"
+    )
+
+    ax.set_xlabel("Iteration")
+    ax.set_ylabel("Fitness")
+    ax.set_title(title)
+
+    ax.legend(loc="lower right", ncol=2)
+
+    ax.grid(True, alpha=0.3)
+
+    ax.set_xlim(0, iters.max())
+
+    plt.tight_layout()
+    plt.show()
+
+
+def print_top_features(results: dict, top_k: int = 20):
+    """
+    Stampa le top-k features più frequentemente selezionate in media
+    per ogni swarm size.
+
+    Args:
+        results: dizionario dei risultati salvati (per swarm size)
+        top_k: numero di feature da mostrare
+    """
+    for swarm_size, runs in results.items():
+        print(f"\n=== Swarm Size: {swarm_size} ===")
+
+        # Aggrego le frequenze di selezione per tutte le run
+        aggregated_counts = {}
+
+        for run in runs:
+            feature_counts = run["logger"].feature_counts
+            for feat_idx, count in feature_counts.items():
+                aggregated_counts[feat_idx] = aggregated_counts.get(feat_idx, 0) + count
+
+        # Calcolo la media su tutte le run
+        n_runs = len(runs)
+        avg_counts = {feat: aggregated_counts[feat] / n_runs for feat in aggregated_counts}
+
+        # Ordino le feature per frequenza media decrescente
+        sorted_feats = sorted(avg_counts.items(), key=lambda x: x[1], reverse=True)
+
+        # Stampiamo le top-k
+        print(f"Top {top_k} features più selezionate (in media):")
+        for i, (feat_idx, avg_count) in enumerate(sorted_feats[:top_k], 1):
+            print(f"{i:02d}. Feature {feat_idx} -> selezionata in media {avg_count:.2f} volte per run")
+
+
+# =============================================================================
+# FUNZIONI AUSILIARIE
+# =============================================================================
+def merge_stopping_criteria_results(n_sections: int = 1, output_file: str = "stopping_criteria_results_full.pkl"):
+    """
+    Unisce tutti i pickle generati da più sezioni in un unico dizionario.
+    """
+
+    final_results = {}
+
+    for section_id in range(1, n_sections + 1):
+        pickle_file = f"stopping_criteria_results_section_{section_id}.pkl"
+        try:
+            with open(pickle_file, "rb") as f:
+                partial_results = pickle.load(f)
+                final_results.update(partial_results)
+                print(f"Sezione {section_id} caricata, {len(partial_results)} combinazioni")
+        except FileNotFoundError:
+            print(f"Attenzione: file {pickle_file} non trovato, salto.")
+
+    # Salvataggio finale
+    with open(output_file, "wb") as f:
+        pickle.dump(final_results, f)
+    print(f"Tutti i risultati uniti in {output_file}")
+
+    return final_results
+
+
+def build_aggregated_results_for_plot(runs: list):
+    """
+    Costruisce un dizionario 'results' compatibile con
+    plot_convergence_curves, aggregando più run.
+    """
+
+    n_runs = len(runs)
+    n_iter = len(runs[0]["logger"].iterations_data)
+
+    aggregated_logger = deepcopy(runs[0]["logger"])
+    aggregated_logger.iterations_data = []
+
+    for i in range(n_iter):
+        avg_fitness = np.mean([
+            run["logger"].iterations_data[i]["avg_fitness"]
+            for run in runs
+        ])
+
+        std_fitness = np.mean([
+            run["logger"].iterations_data[i]["std_fitness"]
+            for run in runs
+        ])
+
+        gbest_fitness = np.mean([
+            run["logger"].iterations_data[i]["gbest_fitness"]
+            for run in runs
+        ])
+
+        aggregated_logger.iterations_data.append({
+            "iteration": i,
+            "avg_fitness": avg_fitness,
+            "std_fitness": std_fitness,
+            "gbest_fitness": gbest_fitness
+        })
+
+    aggregated_results = {
+        "logger": aggregated_logger,
+        "best_fitness": max(
+            run["best_fitness"] for run in runs
+        )
+    }
+
+    return aggregated_results
+
+
 # =============================================================================
 # MAIN
 # =============================================================================
-if __name__ == "__main__":
+def oldmain():
     # 1. Caricamento dati
-    X, y = load_darwin_dataset("Tesina 2/DARWIN.csv")
+    #X, y = load_darwin_dataset("DARWIN.csv")
 
-    # 2. Conversione target da stringa a numerico (P=1, H=0)
-    y_numeric = y.map({'P': 1, 'H': 0})
+    # 2. Conversione target
+    #y_numeric = y.map({'P': 1, 'H': 0})
 
-    # 3. Calcolo correlazioni
-    r_cf = np.array([np.abs(X.iloc[:, i].corr(y_numeric)) for i in range(X.shape[1])])
-    r_ff = np.abs(X.corr().values)
+    # 3. Esecuzione dell'esperimento pesante
+    #print("Avvio dell'esperimento Swarm Size (potrebbe richiedere tempo)...")
 
-    # 4. Creazione oggetto PSO con parametri di default
-    pso = ParticleSwarmOptimization(max_iterations=100)
+    # Nota: Assicurati di passare i parametri corretti che la funzione si aspetta
+    #results = run_experiment_swarm_size(X, y_numeric, n_runs=30)
 
-    # 5. Esecuzione PSO
-    result = pso.run(X, y_numeric, r_cf, r_ff, id_run=1)
+    # 4. SALVATAGGIO DEI RISULTATI (PICKLE)
+    #filename = "risultati_swarm_size.pkl"
+    #print(f"Salvataggio dei risultati in {filename}...")
 
-    # 6. Stampa log iterazioni
-    print("\n=== LOG ITERAZIONI ===")
-    for iter_data in result['logger'].iterations_data:
-        print(f"Iter {iter_data['iteration']:03d} | "
-              f"GBest: {iter_data['gbest_fitness']:.4f} | "
-              f"Avg: {iter_data['avg_fitness']:.4f} | "
-              f"Dispersion: {iter_data['dispersion']:.4f} | "
-              f"AvgVel: {iter_data['avg_velocity']:.4f} | "
-              f"Selected Features: {iter_data['selected_features_count']}")
+    #with open(filename, "wb") as f:
+    #    pickle.dump(results, f)
 
-    # 7. Stampa riepilogo run
-    best_run = result['logger'].run_times[0]  # singolo run
-    print("\n=== RUN SUMMARY ===")
-    print(f"Best Fitness: {best_run['best_fitness']:.4f}")
-    print(f"Selected Features: {best_run['selected_features_count']}")
-    print(f"Iterations Completed: {best_run['iterations_completed']}")
-    print(f"Execution Time: {best_run['execution_time']:.2f} sec")
-    print(f"GBest Position: {best_run['best_position']}")
+    #print("Salvataggio completato")
 
-    print("\n\n\n\n=== FREQUENZA SELEZIONE FEATURES (ORDINATE PER FREQUENZA) ===\n")
-    for feature, count in sorted(result['logger'].feature_counts.items(), key=lambda x: x[1], reverse=True):
-        print(f"Feature {feature} | Selezionata {count} volte")
+    # 1. Caricamento risultati
+    with open("risultati_swarm_size.pkl", "rb") as f:
+        results = pickle.load(f)
 
-    print("\n\n\n\n=== FREQUENZA SELEZIONE FEATURES (ORDINATE PER ID) ===\n")
-    for feature, count in sorted(result['logger'].feature_counts.items()):
-        print(f"Feature {feature} | Selezionata {count} volte")
+    # 2. Costruzione logger aggregati per ogni swarm size
+    aggregated_by_swarm = {}
+
+    for swarm_size, runs in results.items():
+        aggregated_by_swarm[swarm_size] = build_aggregated_results_for_plot(runs)
+        print(f"Plot convergenza media - Swarm size {swarm_size}")
+
+        aggregated_results = build_aggregated_results_for_plot(runs)
+
+        plot_convergence_curves(
+            aggregated_results,
+            title=f"Convergence Curve (Mean of 30 runs) - Swarm size {swarm_size}"
+        )
+
+    # 3. Plot unico con TUTTE le swarm size
+    plot_all_swarms_convergence(
+        aggregated_by_swarm,
+        title="PSO Convergence Comparison (Mean over 30 runs)"
+    )
+
+def main():
+
+    # ============================================================
+    # MODALITÀ: RUN ESPERIMENTO
+    # ============================================================
+
+    if MODE == "run":
+
+        print("Caricamento dataset...")
+        X, y = load_darwin_dataset(DATASET_PATH)
+        y_numeric = y.map({'P': 1, 'H': 0})
+
+        if EXPERIMENT == "swarm":
+            print("Avvio esperimento: SWARM SIZE")
+            results = run_experiment_swarm_size(X, y_numeric, n_runs=N_RUNS)
+
+        elif EXPERIMENT == "coeff":
+            print("Avvio esperimento: PSO COEFFICIENTS")
+            results = run_experiment_pso_coefficients(X, y_numeric, n_runs=N_RUNS)
+
+        elif EXPERIMENT == "stop":
+            print("Avvio esperimento: STOPPING CRITERIA")
+            #results = run_experiment_stopping_criteria(X, y_numeric, n_runs=N_RUNS)
+            results = run_experiment_stopping_criteria(X, y_numeric, n_runs=30, section_id=3, n_sections=5)
+
+        else:
+            raise ValueError("Esperimento non riconosciuto")
+
+        with open(PICKLE_FILE, "wb") as f:
+            pickle.dump(results, f)
+
+        print(f"Risultati salvati in {PICKLE_FILE}")
+
+    # ============================================================
+    # MODALITÀ: PLOT RISULTATI
+    # ============================================================
+
+    elif MODE == "plot":
+
+        print(f"Caricamento risultati da {PICKLE_FILE}")
+        try:
+            with open(PICKLE_FILE, "rb") as f:
+                results = pickle.load(f)
+        except FileNotFoundError:
+            print(f"Errore: il file {PICKLE_FILE} non esiste.")
+            results = None
+            sys.exit(1)
+        except Exception as e:
+            print(f"Errore durante il caricamento del file: {e}")
+            results = None
+            sys.exit(1)
+
+        # Aggregazione per swarm size
+        aggregated_by_swarm = {}
+
+        for swarm_size, runs in results.items():
+            aggregated = build_aggregated_results_for_plot(runs)
+            aggregated_by_swarm[swarm_size] = aggregated
+
+            plot_convergence_curves(
+                aggregated,
+                title=f"Convergence Curve (Mean of {N_RUNS} runs) - Swarm size {swarm_size}"
+            )
+
+        # Plot comparativo finale
+        plot_all_swarms_convergence(
+            aggregated_by_swarm,
+            title="PSO Convergence Comparison (Mean over runs)"
+        )
+
+        plot_feature_frequency(results, top_k=100)
+
+    else:
+        raise ValueError("MODE deve essere 'run' o 'plot'")
 
 
-    plot_convergence_curves(results=result)
+if __name__ == "__main__":
+
+    # ============================================================
+    # CONFIGURAZIONE
+    # ============================================================
+
+    MODE = "run"          # "run" | "plot"
+    EXPERIMENT = "stop"   # "swarm" | "coeff" | "stop"
+
+    N_RUNS = 30
+    DATASET_PATH = "DARWIN.csv"
+    PICKLE_FILE = f"risultati_{EXPERIMENT}.pkl"
+
+    main()
