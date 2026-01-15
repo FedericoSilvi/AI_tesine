@@ -1189,30 +1189,30 @@ def plot_all_coeff_variations(aggregated_results_by_swarm: dict,
             avg_vel = np.array([it["avg_velocity"] for it in logger.iterations_data])
             gbest = np.array([it["gbest_fitness"] for it in logger.iterations_data])
 
-    # Dispersione
-    ax1.plot(
-        iters,
-        dispersion,
-        linestyle="-",
-        linewidth=2,
-        label=f"Dispersion -{coeff}"
-    )
+            # Dispersione
+            ax1.plot(
+                iters,
+                dispersion,
+                linestyle="-",
+                linewidth=1.5,
+                label=f"Dispersion -{coeff}"
+            )
 
-    # Global Best (continua)
-    ax2.plot(
-        iters,
-        gbest,
-        linewidth=2.5,
-        label=f"Global Best -{coeff})"
-    )
-    
-    # Velocità media 
-    ax3.plot(
-        iters,
-        avg_vel,
-        linewidth=2.5,
-        label=f"Average velocity -{coeff})"
-    )
+            # Global Best (continua)
+            ax2.plot(
+                iters,
+                gbest,
+                linewidth=1.5,
+                label=f"Global Best -{coeff})"
+            )
+            
+            # Velocità media 
+            ax3.plot(
+                iters,
+                avg_vel,
+                linewidth=1.5,
+                label=f"Average velocity -{coeff})"
+            )
 
         
 
@@ -1247,7 +1247,7 @@ def plot_all_coeff_variations(aggregated_results_by_swarm: dict,
 
     ax3.set_xlim(0, iters.max())
 
-    plt.tight_layout()
+    
     plt.show()
 
 def print_top_features(results: dict, top_k: int = 20):
@@ -1523,7 +1523,7 @@ def main():
                 aggregated = build_aggregated_results_for_plot(runs)
                 aggregated_by_coeff[coefficients] = aggregated
 
-                plot_convergence_curves(
+                """ plot_convergence_curves(
                     aggregated,
                     title=f"Convergence Curve (Mean of {N_RUNS} runs) - Coefficients {coefficients}"
                 )
@@ -1532,16 +1532,18 @@ def main():
                     aggregated,
                     title=f"Swarm behavior (Mean of {N_RUNS} runs) - Coefficients {coefficients}"
                 )
-
+ """
             # Plot comparativo finale
             plot_all_swarms_convergence(
                 aggregated_by_coeff,
                 title="PSO Convergence Comparison (Mean over runs)"
             )
-            plot_all_coeff_variations(
-                aggregated_by_coeff,
-                title="PSO Behaviour Comparison (Mean over runs)"
-            )
+            for i in range(1,4):
+                plot_all_coeff_variations(
+                    aggregated_by_coeff,
+                    title="PSO Behaviour Comparison (Mean over runs)",
+                    index_coeff=i
+                )
             # Plot della frequenza di scelta delle feature 
             plot_feature_frequency(results, top_k=100)
 
@@ -1603,7 +1605,7 @@ if __name__ == "__main__":
     # CONFIGURAZIONE
     # ============================================================
 
-    MODE = "run"          # "run" | "plot"
+    MODE = "plot"          # "run" | "plot"
     EXPERIMENT = "coeff"   # "swarm" | "coeff" | "stop"
 
     N_RUNS = 30
