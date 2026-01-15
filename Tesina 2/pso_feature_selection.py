@@ -373,10 +373,10 @@ class ParticleSwarmOptimization:
 
         iterations_completed = 0
 
-        w_start = 0.7
+        """ w_start = 0.7
         w_end = 0.7  # lascio fisso
         self.c1 = 1
-        self.c2 = 1
+        self.c2 = 1 """
 
         for iteration in range(self.max_iterations):
             # print(iterations_completed)
