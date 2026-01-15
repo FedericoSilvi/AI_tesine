@@ -382,7 +382,7 @@ class ParticleSwarmOptimization:
             # print(iterations_completed)
             iterations_completed += 1
 
-            self.w = w_start - (w_start - w_end) * (iteration / self.max_iterations)
+            #self.w = w_start - (w_start - w_end) * (iteration / self.max_iterations)
 
             # 1. Valuto lo stormo ed aggiorno il global best se serve
             self.evaluate_swarm(swarm, X, y, r_cf, r_ff)
