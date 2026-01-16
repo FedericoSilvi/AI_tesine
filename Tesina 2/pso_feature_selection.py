@@ -1532,12 +1532,12 @@ def main():
                     aggregated,
                     title=f"Swarm behavior (Mean of {N_RUNS} runs) - Coefficients {coefficients}"
                 )
- """
+                """
             # Plot comparativo finale
-            plot_all_swarms_convergence(
+            """ plot_all_swarms_convergence(
                 aggregated_by_coeff,
                 title="PSO Convergence Comparison (Mean over runs)"
-            )
+            ) """
             for i in range(1,4):
                 plot_all_coeff_variations(
                     aggregated_by_coeff,
@@ -1545,7 +1545,7 @@ def main():
                     index_coeff=i
                 )
             # Plot della frequenza di scelta delle feature 
-            plot_feature_frequency(results, top_k=100)
+            #plot_feature_frequency(results, top_k=100)
 
 
         elif EXPERIMENT == "stop":
