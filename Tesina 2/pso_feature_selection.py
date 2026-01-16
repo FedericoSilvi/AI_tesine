@@ -1282,7 +1282,50 @@ def print_top_features(results: dict, top_k: int = 20):
         for i, (feat_idx, avg_count) in enumerate(sorted_feats[:top_k], 1):
             print(f"{i:02d}. Feature {feat_idx} -> selezionata in media {avg_count:.2f} volte per run")
 
+def best_particle_features(
+    pickle_path: str,
+    config_key,
+    run_index: int = 0
+):
+    """
+    Carica un pickle dei risultati PSO, prende una configurazione
+    (es. swarm size = 500), seleziona una run e stampa le feature selezionate.
 
+    Args:
+        pickle_path (str): percorso al file .pkl
+        config_key: chiave della configurazione (es. 500 per swarm size)
+        run_index (int): indice della run da usare (default = prima run)
+    """
+
+    # Caricamento pickle
+    with open(pickle_path, "rb") as f:
+        results = pickle.load(f)
+
+    if config_key not in results:
+        raise KeyError(f"Configurazione {config_key} non trovata nel pickle.")
+
+    runs = results[config_key]
+
+    if run_index >= len(runs):
+        raise IndexError(f"Run index {run_index} fuori range (max {len(runs)-1}).")
+
+    run = runs[run_index]
+
+    # Estrazione best_position
+    best_position = run["best_position"]
+
+    selected_features = np.where(best_position == 1)[0]
+
+    print("=" * 60)
+    print(f"Configurazione: {config_key}")
+    print(f"Run selezionata: {run_index}")
+    print(f"Best fitness: {run['best_fitness']:.6f}")
+    print(f"Numero feature selezionate: {len(selected_features)}")
+    print("Feature selezionate (indici):")
+    print(selected_features.tolist())
+    print("=" * 60)
+
+    return selected_features
 # =============================================================================
 # FUNZIONI AUSILIARIE
 # =============================================================================
@@ -1477,6 +1520,7 @@ def main():
 
             aggregated_by_swarm = {}
 
+
             for swarm_size, runs in results.items():
                 aggregated = build_aggregated_results_for_plot(runs)
                 aggregated_by_swarm[swarm_size] = aggregated
@@ -1497,6 +1541,9 @@ def main():
             )
             # Plot della frequenza di scelta delle feature 
             plot_feature_frequency(results, top_k=100)
+            
+            
+            
 
         elif EXPERIMENT == "coeff":
 
@@ -1591,6 +1638,8 @@ def main():
             
             # Plot della frequenza di scelta delle feature 
             plot_feature_frequency(results, top_k=100)
+
+            
             
 
          
@@ -1606,7 +1655,7 @@ if __name__ == "__main__":
     # ============================================================
 
     MODE = "plot"          # "run" | "plot"
-    EXPERIMENT = "coeff"   # "swarm" | "coeff" | "stop"
+    EXPERIMENT = "stop"   # "swarm" | "coeff" | "stop"
 
     N_RUNS = 30
     DATASET_PATH = "DARWIN.csv"
