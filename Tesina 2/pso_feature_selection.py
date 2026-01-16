@@ -1220,7 +1220,7 @@ def plot_all_coeff_variations(aggregated_results_by_swarm: dict,
     ax1.set_ylabel("Dispersion")
     ax1.set_title("Swarm Behaviour - Dispersion")
 
-    ax1.legend(loc="lower right", ncol=2)
+    ax1.legend(loc="center right")
 
     ax1.grid(True, alpha=0.3)
 
@@ -1230,7 +1230,7 @@ def plot_all_coeff_variations(aggregated_results_by_swarm: dict,
     ax2.set_ylabel("Swarm Behaviour - Global Fitness")
     ax2.set_title(title)
 
-    ax2.legend(loc="lower right", ncol=2)
+    ax2.legend(loc="lower right")
 
     ax2.grid(True, alpha=0.3)
 
@@ -1241,7 +1241,7 @@ def plot_all_coeff_variations(aggregated_results_by_swarm: dict,
     ax3.set_ylabel("Swarm Behaviour - Average Velocity")
     ax3.set_title(title)
 
-    ax3.legend(loc="upper right", ncol=2)
+    ax3.legend(loc="lower right")
 
     ax3.grid(True, alpha=0.3)
 
