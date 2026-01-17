@@ -100,13 +100,22 @@ class SmartCityCostFunction(BaseCostFunction):
         
         # Latency factor (longer distance = higher latency = higher cost)
         latency_cost = distance * 0.1  # 0.1ms per unit distance
-        
+        # Penalizzo se sfora il limite 
+        if latency_cost>self.max_latency:
+            latency_cost=3.0*latency_cost
+
         # Priority factor (lower priority = higher cost multiplier)
         # Using terrain_difficulty as a proxy for priority (1.0 = high priority)
         avg_priority = (node1.terrain_difficulty + node2.terrain_difficulty) / 2
-        priority_multiplier = avg_priority
+        priority_multiplier = 1/avg_priority
         
-        return latency_cost * priority_multiplier
+        # Bandwidth efficiency 
+        band_cost = avg_priority * self.bandwidth_factor
+        # Penalizzo se sfora il limite di carica (visto in smartcity.py)
+        if band_cost > 3.0:
+            band_cost = 3.0 *band_cost
+
+        return (latency_cost+band_cost) * priority_multiplier
 
 
 class SeismicCostFunction(BaseCostFunction):
@@ -137,7 +146,20 @@ class SeismicCostFunction(BaseCostFunction):
         - Connection stability
         - Redundancy requirements
         """
-        pass
+        vuln_score = node1.get_vulnerability_score(node2)
+        # Penalizzo se sfora il limite 
+        if vuln_score > self.max_vulnerability:
+            vuln_score = 3.0 * vuln_score
+
+        # Metrica ideata per la stabilità
+        needed_power = node1.get_power_requirement(node2)
+        actual_power = (node1.power_capacity + node2.power_capacity) / 2 
+        stability_factor = actual_power/needed_power
+
+        stability_penalty = 1/stability_factor 
+
+        # Utilizzo del redundancy factor per accentuare il costo 
+        return (vuln_score+stability_penalty)*self.redundancy_factor
 
 
 class EnergyCostFunction(BaseCostFunction):
@@ -168,4 +190,22 @@ class EnergyCostFunction(BaseCostFunction):
         - Node power capacities
         - Distance-based power needs
         """
-        pass
+        required_power = node1.get_power_requirement(node2)
+
+        power_per_node = required_power/2
+
+        power_cost = required_power
+
+        if power_per_node > self.max_power_per_node:
+            power_cost = 3.0*power_cost
+        
+        node_load = power_per_node/node1.power_capacity
+
+        if node_load > 0.8: # Se la potenza richiesta supera l'80% della capacità del nodo
+            load_cost = node_load*3.0
+        else:
+            load_cost = node_load
+        
+        return power_cost + load_cost
+
+        
