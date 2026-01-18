@@ -54,28 +54,47 @@ class PrimMST:
             List[Tuple[int, int]]: List of edges in the MST as (node1_id, node2_id) tuples
         """
         # TODO: Student Implementation
-        
         # 1. Initialize data structures
         #    - visited: Set[int] to track visited nodes
         #    - mst_edges: List[Tuple[int, int]] to store MST edges
         #    - pq: PriorityQueue for edges, storing (weight, from_node, to_node)
+
+        visited: Set[int] = set() # Insieme dei nodi visitati
+        mst_edges: List[Tuple[int, int]] = [] # Lista degli archi dell'albero di copertura minimo
+        pq: PriorityQueue = PriorityQueue() # Coda di priorità per gli archi
         
         # 2. Start from start_node
         #    - Add start_node to visited set
         #    - Add all edges from start_node to priority queue
         #      * Use network.graph.neighbors(start_node) to get neighbors
         #      * Get edge weight with network.graph.edges[start_node, neighbor]['weight']
-        
+
+        visited.add(start_node) # Aggiunge il nodo di partenza all'insieme dei nodi visitati
+        self._add_edges_to_queue(start_node, visited, pq) # Aggiunge tutti gli archi del nodo di partenza alla coda di priorità
+
+        for neighbors in self.network.graph.neighbors(start_node): # Per ogni vicino del nodo di partenza
+            weight = self.network.graph.edges[start_node, neighbors]['weight'] # Ottiene il peso dell'arco
+            pq.put((weight, start_node, neighbors)) # Aggiunge l'arco alla coda di priorità
+
         # 3. Main loop (while pq not empty AND len(visited) < total nodes)
         #    - Get minimum weight edge from priority queue: (weight, from_node, to_node)
         #    - If to_node is not in visited:
         #      * Add (from_node, to_node) to mst_edges
         #      * Add to_node to visited
         #      * Add all edges from to_node to unvisited neighbors to pq
-        
+
+        total_nodes = self.network.graph.number_of_nodes() # Numero totale di nodi nel grafo
+
+        while not pq.empty() and len(visited) < total_nodes: # Finché la coda non è vuota e non sono stati visitati tutti i nodi
+            weight, from_node, to_node = pq.get() # Prende e rimuove l'elemento con la priorità più alta (peso minimo, primo elemento della tupla)
+            
+            if to_node not in visited: # Se il nodo di destinazione non è stato ancora visitato
+                mst_edges.append((from_node, to_node)) # Aggiunge l'arco alla lista degli archi dell'albero di copertura minimo
+                visited.add(to_node) # Aggiunge il nodo di destinazione all'insieme dei nodi visitati
+                self._add_edges_to_queue(to_node, visited, pq) # Aggiunge tutti gli archi del nodo di destinazione alla coda di priorità
+    
         # 4. Return mst_edges
-        
-        pass
+        return mst_edges
     
     def _add_edges_to_queue(self, node: int, visited: Set[int], 
                            pq: PriorityQueue) -> None:
@@ -94,4 +113,8 @@ class PrimMST:
         #   If neighbor not in visited:
         #     Get edge weight
         #     Add (weight, node, neighbor) to pq
-        pass
+        
+        for neighbor in self.network.graph.neighbors(node): # Per ogni vicino del nodo
+            if neighbor not in visited: # Se il vicino non è stato ancora visitato
+                weight = self.network.graph.edges[node, neighbor]['weight'] # Ottiene il peso dell'arco
+                pq.put((weight, node, neighbor)) # Aggiunge l'arco alla coda di priorità
