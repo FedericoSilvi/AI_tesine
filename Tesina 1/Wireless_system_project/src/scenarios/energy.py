@@ -7,6 +7,9 @@ from typing import List, Tuple, Optional, Dict
 from src.models.network import WirelessNetwork
 # from src.algorithms.kruskal import KruskalMST
 # from src.algorithms.prim import PrimMST
+from src.algorithm.cost_functions import EnergyCostFunction
+from src.algorithm.kruskal import KruskalMST
+from src.algorithm.prim import PrimMST
 
 
 def solve_energy_scenario(network: WirelessNetwork,
@@ -31,6 +34,10 @@ def solve_energy_scenario(network: WirelessNetwork,
     # - Consider power requirements for connections
     # - Account for node power capacities
     # - Factor in distance-based power needs
+
+    cost_func = EnergyCostFunction(network=network)
+
+    cost_func.apply_to_network()
     
     # 2. Initialize MST algorithm
     # if algorithm == 'kruskal':
@@ -38,16 +45,30 @@ def solve_energy_scenario(network: WirelessNetwork,
     # else:
     #     mst_solver = PrimMST(network)
     
+
+    if algorithm == 'kruskal':
+        mst_solver = KruskalMST(network=network)
+    else:
+        mst_solver = PrimMST(network=network)
+    
+
     # 3. Consider:
     # - Minimize total power consumption
     # - Balance load across nodes
     # - Ensure sufficient power capacity
     # - Optimize transmission distances
     
+
+
+
     # 4. Find and validate MST solution
     # mst_edges = mst_solver.find_mst()
     # if validate_energy_solution(network, mst_edges, constraints):
     #     return mst_edges
+
+    mst_edges = mst_solver.find_mst()
+    if validate_energy_solution(network,mst_edges,constraints):
+        return mst_edges
     
     return None
 
@@ -77,11 +98,15 @@ def validate_energy_solution(network: WirelessNetwork,
         node_power[edge[1]] += power_req / 2
         
     # Check constraints
+    print(f"Total power: {total_power}")
     if total_power > total_power_budget:
+        
         return False
         
     for power in node_power.values():
+        print(f"Power per node: {power}")
         if power > max_power_per_node:
+           
             return False
     
     return True
