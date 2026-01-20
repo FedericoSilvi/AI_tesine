@@ -81,6 +81,7 @@ class KruskalMST:
         # assegna un peso a tutti gli archi, se esiste il campo weight mette quello altrimenti 1
         for u, v, data in self.network.graph.edges(data=True): # (grazie gpitti) con data=True l'arco ha 3 elementi: (u,v,data) dove data è un dizionario di attributi dell'arco
                                                                # in add_link dovrebbe esserci una roba tipo "weight": cost che viene messa nel data
+        
             weight = data.get("weight", 1)
             edges.append((weight, u, v)) # aggiungi l'arco alla lista degli archi
 
@@ -95,9 +96,73 @@ class KruskalMST:
 
                 if len(mst) == num_nodes - 1: # se raggiungo num_nodes - 1 vuol dire che l'MST è completo
                     break
-        
         return mst # restituisco l'MST completo
     
+
+    def find_mst_force(self,scenario) ->List[Tuple[int, int]]:
+
+
+        MAX_PARAM = 50.0
+        if scenario == "seismic":
+            MAX_PARAM=0.65
+        elif scenario =="smartcity":
+            MAX_PARAM=50
+        PENALTY = 10000.0
+
+        mst: List[Tuple[int, int]] = []
+
+        for node in self.network.graph.nodes():
+            self._make_set(node)
+
+        edges: List[Tuple[float, int, int]] = []
+
+
+        for u, v, data in self.network.graph.edges(data=True):
+            base_weight = data.get("weight", 1)
+            
+            node1 = self.network.nodes[u]
+            node2 = self.network.nodes[v]
+
+            #print(node1,flush=True)
+
+            penalty_weight = base_weight * PENALTY
+
+            effective_weight = base_weight
+
+            if scenario=="seismic":
+                print("sto in seismic",flush=True)
+                metric_to_check = node1.get_vulnerability_score(node2)
+                if metric_to_check > MAX_PARAM:
+                      print("sto nella condizione",flush=True)
+                      effective_weight = penalty_weight
+                      print(f"Penalizing edge {u}-{v}: metric {metric_to_check} > {MAX_PARAM}")
+
+            elif scenario =="smartcity":
+                metric_to_check = node1.distance_to(node2) * 0.1
+                if metric_to_check > MAX_PARAM:
+                    effective_weight = penalty_weight
+                    print(f"Penalizing edge {u}-{v}: metric {metric_to_check} > {MAX_PARAM}")
+
+            edges.append((effective_weight, u, v))
+           
+
+        edges.sort(key=lambda x: x[0])
+        for w,u,v in edges:
+            print(f"Nodo {u} - Nodo {v}, Peso: {w}")
+
+        num_nodes = self.network.graph.number_of_nodes()
+
+        for weight, u, v in edges:
+            if self._find(u) != self._find(v):
+                mst.append((u, v))
+                self._union(u, v)
+
+                if len(mst) == num_nodes - 1:
+                    break
+
+        return mst
+    
+
     def _make_set(self, v: int) -> None:
         """
         Initialize a disjoint set containing only vertex v.

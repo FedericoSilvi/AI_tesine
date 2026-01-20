@@ -158,7 +158,7 @@ energy    - Optimize for power consumption'''
                 args.algorithm,
                 scenario_data['constraints']
             )
-        
+            
         if mst_edges:
             # Validate the solution
             if validate_mst(network, mst_edges, scenario_data['constraints']):

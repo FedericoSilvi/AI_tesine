@@ -7,6 +7,9 @@ from typing import List, Tuple, Optional, Dict
 from src.models.network import WirelessNetwork
 # from src.algorithms.kruskal import KruskalMST
 # from src.algorithms.prim import PrimMST
+from src.algorithm.cost_functions import SeismicCostFunction
+from src.algorithm.kruskal import KruskalMST
+from src.algorithm.prim import PrimMST
 
 def solve_seismic_scenario(network: WirelessNetwork,
                           algorithm: str = 'kruskal',
@@ -30,13 +33,21 @@ def solve_seismic_scenario(network: WirelessNetwork,
     # - Consider node vulnerability scores
     # - Account for terrain stability
     # - Factor in redundancy requirements
-    
+    cost_func = SeismicCostFunction(network=network)
+    cost_func.apply_to_network()
+
+
     # 2. Initialize MST algorithm
     # if algorithm == 'kruskal':
     #     mst_solver = KruskalMST(network)
     # else:
     #     mst_solver = PrimMST(network)
     
+    if algorithm == 'kruskal':
+        mst_solver = KruskalMST(network=network)
+    else:
+        mst_solver = PrimMST(network=network)
+
     # 3. Consider:
     # - Minimize vulnerability scores
     # - Ensure redundant paths where needed
@@ -47,6 +58,10 @@ def solve_seismic_scenario(network: WirelessNetwork,
     # mst_edges = mst_solver.find_mst()
     # if validate_seismic_solution(network, mst_edges, constraints):
     #     return mst_edges
+
+    mst_edges = mst_solver.find_mst()
+    if validate_seismic_solution(network,mst_edges,constraints):
+        return mst_edges
     
     return None
 
@@ -54,6 +69,7 @@ def validate_seismic_solution(network: WirelessNetwork,
                             mst_edges: List[Tuple[int, int]],
                             constraints: Dict) -> bool:
     """Validate MST solution for seismic scenario."""
+    
     if not mst_edges:
         return False
         
@@ -66,7 +82,8 @@ def validate_seismic_solution(network: WirelessNetwork,
         node2 = network.nodes[edge[1]]
         
         if node1.get_vulnerability_score(node2) > max_vulnerability:
-            return False
+            print(f"Nodo: {node1}-{node2}, Vuln: {node1.get_vulnerability_score(node2)}",flush=True)
+            #return False
     
     # Check redundancy requirements
     # TODO: Implement redundancy validation

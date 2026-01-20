@@ -97,7 +97,7 @@ class SmartCityCostFunction(BaseCostFunction):
         """
         # Base implementation - students should improve this
         distance = node1.distance_to(node2)
-        
+        print(node1,flush=True)
         # Latency factor (longer distance = higher latency = higher cost)
         latency_cost = distance * 0.1  # 0.1ms per unit distance
         # Penalizzo se sfora il limite 
