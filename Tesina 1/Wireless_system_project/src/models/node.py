@@ -113,3 +113,6 @@ class Node:
             vulnerability=data.get('vulnerability', 0.0),
             terrain_difficulty=data.get('terrain_difficulty', 1.0)
         )
+    
+    def scale_power_capacity(self, new_capacity: float):
+        self.power_capacity-=new_capacity

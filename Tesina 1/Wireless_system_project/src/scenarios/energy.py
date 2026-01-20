@@ -96,6 +96,9 @@ def validate_energy_solution(network: WirelessNetwork,
         # Add power requirements to both nodes
         node_power[edge[0]] += power_req / 2
         node_power[edge[1]] += power_req / 2
+
+        node1.scale_power_capacity(node_power[edge[0]])
+        node2.scale_power_capacity(node_power[edge[1]])
         
     # Check constraints
     print(f"Total power: {total_power}",flush=True)
@@ -106,7 +109,7 @@ def validate_energy_solution(network: WirelessNetwork,
     for power in node_power.values():
         print(f"Power per node: {power}",flush=True)
         if power > max_power_per_node:
-           
+            
             return False
     
     return True
