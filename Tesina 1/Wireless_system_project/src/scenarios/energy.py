@@ -59,8 +59,6 @@ def solve_energy_scenario(network: WirelessNetwork,
     # - Optimize transmission distances
     
 
-
-
     # 4. Find and validate MST solution
     # mst_edges = mst_solver.find_mst()
     # if validate_energy_solution(network, mst_edges, constraints):
