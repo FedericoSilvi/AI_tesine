@@ -686,7 +686,7 @@ def run_experiment_pso_coefficients(X: pd.DataFrame, y: pd.Series,
         print(f"{i:02d}: Inertia={comb[0]}, Cognitive coefficient={comb[1]}, Social coefficient={comb[2]}")
 
     results = {}
-    output_file = f"experiment_coefficients_section_{section_id}.txt"
+    output_file = f"experiment_coefficients_section_{section_id}_seed.txt"
 
     # Correlazioni per fitness
     y_numeric = y
@@ -803,7 +803,7 @@ def run_experiment_stopping_criteria(X: pd.DataFrame, y: pd.Series,
         print(f"{i:02d}: MaxIter={comb[0]}, Threshold={comb[1]}, Tol={comb[2]}")
 
     results = {}
-    output_file = f"experiment_stopping_criteria_section_{section_id}.txt"
+    output_file = f"experiment_stopping_criteria_section_{section_id}_seed.txt"
 
     # Correlazioni per fitness
     y_numeric = y
@@ -835,7 +835,8 @@ def run_experiment_stopping_criteria(X: pd.DataFrame, y: pd.Series,
                     swarm_size=100,
                     max_iterations=max_iter,
                     convergence_threshold=threshold,
-                    convergence_tolerance=tol
+                    convergence_tolerance=tol,
+                    random_seed=SEED+run_idx
                 )
 
                 result = pso.run(
@@ -1715,10 +1716,15 @@ def main():
             aggregated_by_stop = {}
 
             for stop, runs in results.items():
-                aggregated = build_aggregated_results_for_plot(runs)
+                aggregated = build_best_run_results_for_plot(runs)
                 aggregated_by_stop[stop] = aggregated
 
-                plot_convergence_curves(
+                plot_runs_with_statistics(
+                    runs,
+                    title=f"Convergence Statistics ({N_RUNS} runs) - Stop Criteria {stop}"
+                )
+
+                """ plot_convergence_curves(
                     aggregated,
                     title=f"Convergence Curve (Mean of {N_RUNS} runs) - Coefficients {stop}"
                 )
@@ -1726,12 +1732,12 @@ def main():
                 plot_swarm_behavior(
                     aggregated,
                     title=f"Swarm behavior (Mean of {N_RUNS} runs) - Coefficients {stop}"
-                )
-                
+                ) """
+            print(aggregated_by_stop)
             # Plot comparativo finale
             plot_all_swarms_convergence(
                 aggregated_by_stop,
-                title="PSO Convergence Comparison (Mean over runs)"
+                title="PSO Convergence Comparison (Best run per configuration)"
             )
             
             # Plot della frequenza di scelta delle feature 
@@ -1753,7 +1759,7 @@ if __name__ == "__main__":
     # ============================================================
 
     MODE = "plot"          # "run" | "plot"
-    EXPERIMENT = "swarm"   # "swarm" | "coeff" | "stop"
+    EXPERIMENT = "stop"   # "swarm" | "coeff" | "stop"
 
     N_RUNS = 30
     DATASET_PATH = "DARWIN.csv"
