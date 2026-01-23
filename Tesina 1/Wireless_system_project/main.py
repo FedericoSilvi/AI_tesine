@@ -95,6 +95,9 @@ def validate_mst(network: WirelessNetwork, mst_edges: List[Tuple[int, int]],
         return False
         
     # Check scenario-specific constraints (to be implemented)
+
+    
+
     return True
 
 def main():
@@ -128,6 +131,14 @@ energy    - Optimize for power consumption'''
         # Create and display initial network
         network = WirelessNetwork.create_fixed_network()
         logger.info("Initializing Wireless Communication Network...")
+
+        for edge in network.graph.edges():
+            node1 = network.nodes[edge[0]]
+            node2 = network.nodes[edge[1]]
+            vuln = node1.get_vulnerability_score(node2)
+            network.graph.edges[edge]['weight'] = vuln 
+
+
         visualizer = NetworkVisualizer()
         visualizer.display_initial_network(network)
         
@@ -140,41 +151,48 @@ energy    - Optimize for power consumption'''
         
         # Solve the selected scenario
         mst_edges = None
+        passed = None 
+        error_edges = []
+
         if args.scenario == 'smartcity':
-            mst_edges = solve_smartcity_scenario(
+            mst_edges,passed,error_edges = solve_smartcity_scenario(
                 network,
                 args.algorithm,
                 scenario_data['constraints']
             )
         elif args.scenario == 'seismic':
-            mst_edges = solve_seismic_scenario(
+            mst_edges,passed,error_edges = solve_seismic_scenario(
                 network,
                 args.algorithm,
                 scenario_data['constraints']
             )
         elif args.scenario == 'energy':
-            mst_edges = solve_energy_scenario(
+            mst_edges,passed,error_edges = solve_energy_scenario(
                 network,
                 args.algorithm,
                 scenario_data['constraints']
             )
             
         if mst_edges:
-            # Validate the solution
-            if validate_mst(network, mst_edges, scenario_data['constraints']):
-                # Calculate and log total cost
-                total_cost = calculate_network_cost(network, mst_edges)
-                logger.info(f"Found optimal MST! Total cost: {total_cost:.2f}")
-                
-                # Visualize the solution
-                visualizer.plot_scenario(
-                    network,
-                    scenario_type=args.scenario,
-                    mst_edges=mst_edges
-                )
-                visualizer.show_plot()
-            else:
+            # Calculate and log total cost
+            total_cost = calculate_network_cost(network, mst_edges)
+            logger.info(f"Found optimal MST! Total cost: {total_cost:.2f}")
+            
+            # Visualize the solution
+            visualizer.plot_scenario(
+                network,
+                scenario_type=args.scenario,
+                mst_edges=mst_edges
+            )
+            visualizer.show_plot()
+            # Validate the solution (tell the user if something's wrong)
+            if passed==False:
                 logger.error("MST found but doesn't meet required constraints!")
+                for edge in error_edges:
+                    node1 = edge[0]
+                    node2 = edge[1]
+                    vuln = edge[2]
+                    logger.warning(f"Link: node {node1} - node {node2}, vulnerability score = {vuln:.2f}")
         else:
             logger.error("No valid MST found - Check your implementation!")
         

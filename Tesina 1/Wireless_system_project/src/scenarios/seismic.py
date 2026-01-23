@@ -13,7 +13,7 @@ from src.algorithm.prim import PrimMST
 
 def solve_seismic_scenario(network: WirelessNetwork,
                           algorithm: str = 'kruskal',
-                          constraints: Dict = None) -> Optional[List[Tuple[int, int]]]:
+                          constraints: Dict = None) -> Tuple[List[Tuple[int, int]],bool, List[Tuple[int,int,float]]]:
     """
     Find optimal MST considering seismic vulnerability.
     
@@ -60,14 +60,17 @@ def solve_seismic_scenario(network: WirelessNetwork,
     #     return mst_edges
 
     mst_edges = mst_solver.find_mst()
-    if validate_seismic_solution(network,mst_edges,constraints):
-        return mst_edges
-    
-    return None
+
+    passed = False
+    error_edges = []
+
+    [passed,error_edges] = validate_seismic_solution(network,mst_edges,constraints)
+        
+    return [mst_edges,passed,error_edges]
 
 def validate_seismic_solution(network: WirelessNetwork,
                             mst_edges: List[Tuple[int, int]],
-                            constraints: Dict) -> bool:
+                            constraints: Dict) -> Tuple[bool,List[Tuple[int,int,float]]]:
     """Validate MST solution for seismic scenario."""
     
     if not mst_edges:
@@ -76,16 +79,22 @@ def validate_seismic_solution(network: WirelessNetwork,
     max_vulnerability = constraints.get('max_vulnerability', 0.7)
     redundancy_factor = constraints.get('redundancy_factor', 2.0)
     
+    error_edges = [] 
+
     # Check vulnerability constraints
     for edge in mst_edges:
         node1 = network.nodes[edge[0]]
         node2 = network.nodes[edge[1]]
         
         if node1.get_vulnerability_score(node2) > max_vulnerability:
-            print(f"Nodo: {node1}-{node2}, Vuln: {node1.get_vulnerability_score(node2)}",flush=True)
-            #return False
+            info = (node1.id,node2.id,node1.get_vulnerability_score(node2))
+            error_edges.append(info)
+            
     
     # Check redundancy requirements
     # TODO: Implement redundancy validation
     
-    return True
+    if len(error_edges)==0:
+        return [True,error_edges]
+    else:
+        return [False,error_edges]
