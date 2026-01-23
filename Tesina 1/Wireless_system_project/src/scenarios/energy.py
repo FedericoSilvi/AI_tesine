@@ -14,7 +14,7 @@ from src.algorithm.prim import PrimMST
 
 def solve_energy_scenario(network: WirelessNetwork,
                          algorithm: str = 'kruskal',
-                         constraints: Dict = None) -> Optional[List[Tuple[int, int]]]:
+                         constraints: Dict = None) -> Tuple[List[Tuple[int,int]],bool,List[Tuple[int,int,float]],bool]:
     """
     Find optimal MST considering power consumption.
     
@@ -65,18 +65,22 @@ def solve_energy_scenario(network: WirelessNetwork,
     #     return mst_edges
 
     mst_edges = mst_solver.find_mst()
-    if validate_energy_solution(network,mst_edges,constraints):
-        return mst_edges
+    passed, error_edges, power_passed = validate_energy_solution(network,mst_edges,constraints)
+
+    return mst_edges,passed, error_edges, power_passed
     
-    return None
+    
 
 def validate_energy_solution(network: WirelessNetwork,
                            mst_edges: List[Tuple[int, int]],
-                           constraints: Dict) -> bool:
+                           constraints: Dict) -> Tuple[bool,List[Tuple[int,int,float]],bool]:
     """Validate MST solution for energy optimization scenario."""
     if not mst_edges:
         return False
         
+    error_edges = [] 
+    tot_power_passed = True
+
     max_power_per_node = constraints.get('max_power_per_node', 100.0)
     total_power_budget = constraints.get('total_power_budget', float('inf'))
     
@@ -99,15 +103,23 @@ def validate_energy_solution(network: WirelessNetwork,
         node2.scale_power_capacity(node_power[edge[1]])
         
     # Check constraints
-    print(f"Total power: {total_power}",flush=True)
+    
     if total_power > total_power_budget:
+        tot_power_passed = False
         
-        return False
         
     for power in node_power.values():
-        print(f"Power per node: {power}",flush=True)
+        
         if power > max_power_per_node:
+            info = (node1, node2, power)
+            error_edges.append(info)
+
             
-            return False
     
-    return True
+    if len(error_edges)==0 and tot_power_passed == True :
+
+        return True,error_edges,tot_power_passed
+    
+    else :
+
+        return False,error_edges,tot_power_passed

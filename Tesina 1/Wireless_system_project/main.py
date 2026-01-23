@@ -132,11 +132,11 @@ energy    - Optimize for power consumption'''
         network = WirelessNetwork.create_fixed_network()
         logger.info("Initializing Wireless Communication Network...")
 
-        for edge in network.graph.edges():
+        """ for edge in network.graph.edges():
             node1 = network.nodes[edge[0]]
             node2 = network.nodes[edge[1]]
             vuln = node1.get_vulnerability_score(node2)
-            network.graph.edges[edge]['weight'] = vuln 
+            network.graph.edges[edge]['weight'] = vuln  """
 
 
         visualizer = NetworkVisualizer()
@@ -153,6 +153,7 @@ energy    - Optimize for power consumption'''
         mst_edges = None
         passed = None 
         error_edges = []
+        tot_power_passed = None 
 
         if args.scenario == 'smartcity':
             mst_edges,passed,error_edges = solve_smartcity_scenario(
@@ -167,7 +168,7 @@ energy    - Optimize for power consumption'''
                 scenario_data['constraints']
             )
         elif args.scenario == 'energy':
-            mst_edges,passed,error_edges = solve_energy_scenario(
+            mst_edges,passed,error_edges, tot_power_passed = solve_energy_scenario(
                 network,
                 args.algorithm,
                 scenario_data['constraints']
@@ -187,12 +188,36 @@ energy    - Optimize for power consumption'''
             visualizer.show_plot()
             # Validate the solution (tell the user if something's wrong)
             if passed==False:
-                logger.error("MST found but doesn't meet required constraints!")
-                for edge in error_edges:
-                    node1 = edge[0]
-                    node2 = edge[1]
-                    vuln = edge[2]
-                    logger.warning(f"Link: node {node1} - node {node2}, vulnerability score = {vuln:.2f}")
+                if args.scenario == "seismic":
+                    logger.error("MST found but doesn't meet required constraints!")
+                    logger.warning(f"Max vulnerability per node : {scenario_data["constraints"]["max_vulnerability"]}")
+                    for edge in error_edges:
+                        node1 = edge[0]
+                        node2 = edge[1]
+                        vuln = edge[2]
+                        logger.warning(f"Link: node {node1} - node {node2}, Vulnerability score = {vuln:.2f}")
+                elif args.scenario == "smartcity":
+                    logger.error("MST found but doesn't meet required constraints!")
+                    logger.warning(f"Max latency per node : {scenario_data["constraints"]["max_latency"]}, Max load : {scenario_data["constraints"]["bandwidth_factor"]}")
+                    for edge in error_edges:
+                        node1 = edge[0]
+                        node2 = edge[1]
+                        lat = edge[2]
+                        load = edge[3]
+                        logger.warning(f"Link: node {node1} - node {node2}, Latency = {lat:.2f}, Load = {load:.2f}")
+                elif args.scenario =="energy":
+                    logger.error("MST found but doesn't meet required constraints!")
+                    logger.warning(f"Max power per node : {scenario_data["constraints"]["max_power_per_node"]}, Max total power : {scenario_data["constraints"]["total_power_budget"]}")
+                    for edge in error_edges:
+                        node1 = edge[0]
+                        node2 = edge[1]
+                        lat = edge[2]
+                        load = edge[3]
+                        logger.warning(f"Link: node {node1} - node {node2}, Latency = {lat:.2f}, Load = {load:.2f}")
+                    if tot_power_passed == False:
+                        logger.warning(f"Total solution power exceeds the constraint: {total_cost} > {scenario_data["constraints"]["total_power_budget"]}")
+
+
         else:
             logger.error("No valid MST found - Check your implementation!")
         

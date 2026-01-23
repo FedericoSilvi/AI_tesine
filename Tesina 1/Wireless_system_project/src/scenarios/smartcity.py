@@ -13,7 +13,7 @@ from src.algorithm.prim import PrimMST
 
 def solve_smartcity_scenario(network: WirelessNetwork,
                              algorithm: str = 'kruskal',
-                             constraints: Dict = None) -> Optional[List[Tuple[int, int]]]:
+                             constraints: Dict = None) -> Tuple[List[Tuple[int, int]],bool, List[Tuple[int,int,float,float]]]:
     """
     Find optimal MST considering smart city IoT requirements.
     
@@ -62,15 +62,16 @@ def solve_smartcity_scenario(network: WirelessNetwork,
     #     return mst_edges
     
     mst_edges = mst_solver.find_mst()
-    if validate_smartcity_solution(network,mst_edges,constraints):
-        return mst_edges
+    [passed , error_edge] = validate_smartcity_solution(network, mst_edges, constraints)
 
-    return None
+
+
+    return [mst_edges, passed, error_edge]
 
 
 def validate_smartcity_solution(network: WirelessNetwork,
                                 mst_edges: List[Tuple[int, int]],
-                                constraints: Dict) -> bool:
+                                constraints: Dict) -> Tuple[bool,List[Tuple[int,int,float,float]]]:
     """
     Validate MST solution for smart city IoT scenario.
     
@@ -87,23 +88,27 @@ def validate_smartcity_solution(network: WirelessNetwork,
         
     max_latency = constraints.get('max_latency', float('inf'))
     bandwidth_factor = constraints.get('bandwidth_factor', 1.0)
-    
+    error_edges = [] 
+
+
     for edge in mst_edges:
         node1 = network.nodes[edge[0]]
         node2 = network.nodes[edge[1]]
         
         # Check latency constraint (distance-based estimation: ~0.1ms per unit distance)
         estimated_latency = node1.distance_to(node2) * 0.1
-        print(f"Distance: {node1.distance_to(node2)}")
-        print(f"Latency: {estimated_latency}",flush=True)
-        if estimated_latency > max_latency:
-            return False
+        
+        
             
         # Check bandwidth requirement doesn't exceed capacity
         # Higher priority nodes require more bandwidth
         priority_factor = (node1.terrain_difficulty + node2.terrain_difficulty) / 2
-        print(f"Bandwidth: {priority_factor*bandwidth_factor}",flush=True)
-        if priority_factor * bandwidth_factor > 3.0:  # Max acceptable load
-            return False
-    
-    return True
+        
+        if estimated_latency > max_latency or priority_factor * bandwidth_factor > 3.0:  # Max acceptable load
+            info = (node1, node2, estimated_latency, priority_factor * bandwidth_factor)
+            error_edges.append(info)
+            
+    if len(error_edges)==0:
+        return True,error_edges
+    else:
+        return False,error_edges
