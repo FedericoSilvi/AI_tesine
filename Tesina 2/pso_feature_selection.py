@@ -1655,7 +1655,7 @@ if __name__ == "__main__":
     # ============================================================
 
     MODE = "plot"          # "run" | "plot"
-    EXPERIMENT = "stop"   # "swarm" | "coeff" | "stop"
+    EXPERIMENT = "coeff"   # "swarm" | "coeff" | "stop"
 
     N_RUNS = 30
     DATASET_PATH = "DARWIN.csv"

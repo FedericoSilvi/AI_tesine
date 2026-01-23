@@ -717,7 +717,8 @@ def run_experiment_pso_coefficients(X: pd.DataFrame, y: pd.Series,
                     swarm_size=100,
                     w=inertia,
                     c1=c1,
-                    c2=c2
+                    c2=c2,
+                    random_seed=SEED+run_idx
                 )
 
                 result = pso.run(
@@ -1666,9 +1667,13 @@ def main():
             aggregated_by_coeff = {}
 
             for coefficients, runs in results.items():
-                aggregated = build_aggregated_results_for_plot(runs)
+                aggregated = build_best_run_results_for_plot(runs)
                 aggregated_by_coeff[coefficients] = aggregated
 
+                plot_runs_with_statistics(
+                    runs,
+                    title=f"Convergence Statistics ({N_RUNS} runs) - Coefficients: {coefficients}"
+                )
                 """ plot_convergence_curves(
                     aggregated,
                     title=f"Convergence Curve (Mean of {N_RUNS} runs) - Coefficients {coefficients}"
@@ -1759,7 +1764,7 @@ if __name__ == "__main__":
     # ============================================================
 
     MODE = "plot"          # "run" | "plot"
-    EXPERIMENT = "stop"   # "swarm" | "coeff" | "stop"
+    EXPERIMENT = "coeff"   # "swarm" | "coeff" | "stop"
 
     N_RUNS = 30
     DATASET_PATH = "DARWIN.csv"
