@@ -1257,7 +1257,7 @@ def plot_all_coeff_variations(aggregated_results_by_swarm: dict,
     elif index_coeff ==3:
         if_cond[2]=[1.0,1.5,2.0,2.5]
 
-    # Deault: (0.7,2.0,2.0)
+    # Default: (0.7,2.0,2.0)
     for coeff, results in aggregated_results_by_swarm.items():
        if (
                 coeff[0] in if_cond[0] and
@@ -1300,7 +1300,7 @@ def plot_all_coeff_variations(aggregated_results_by_swarm: dict,
 
     ax1.set_xlabel("Iteration")
     ax1.set_ylabel("Dispersion")
-    ax1.set_title("Swarm Behaviour - Dispersion")
+    ax1.set_title(title+ "Dispersion")
 
     ax1.legend(loc="center right")
 
@@ -1310,7 +1310,7 @@ def plot_all_coeff_variations(aggregated_results_by_swarm: dict,
 
     ax2.set_xlabel("Iteration")
     ax2.set_ylabel("Swarm Behaviour - Global Fitness")
-    ax2.set_title(title)
+    ax2.set_title(title+"Global Fitness")
 
     ax2.legend(loc="lower right")
 
@@ -1321,7 +1321,7 @@ def plot_all_coeff_variations(aggregated_results_by_swarm: dict,
 
     ax3.set_xlabel("Iteration")
     ax3.set_ylabel("Swarm Behaviour - Average Velocity")
-    ax3.set_title(title)
+    ax3.set_title(title+"Average Velocity")
 
     ax3.legend(loc="lower right")
 
@@ -1629,18 +1629,19 @@ def main():
                     aggregated,
                     title=f"Convergence Curve (Mean of {N_RUNS} runs) - Swarm size {swarm_size}"
                 )
-                aggregated_by_swarm[swarm_size] = aggregated
+                """
+                
                 plot_swarm_behavior(
                     aggregated,
-                    title=f"Swarm behavior (Mean of {N_RUNS} runs) - Swarm size {swarm_size}"
-                ) """
+                    title=f"Swarm behavior (Best of {N_RUNS} runs) - Swarm size {swarm_size}"
+                ) 
             # Plot comparativo finale
             plot_all_swarms_convergence(
                 aggregated_by_swarm,
-                title="PSO Convergence Comparison (Mean over runs)"
+                title="PSO Convergence Comparison (Best runs for each configuration)"
             )
             # Plot della frequenza di scelta delle feature 
-            plot_feature_frequency(results, top_k=100)
+            plot_feature_frequency(results, top_k=10)
             
             
             
@@ -1663,27 +1664,30 @@ def main():
             # Aggregazione per swarm size
 
             plot_fitness_boxplots(results)
-
+            
             aggregated_by_coeff = {}
 
             for coefficients, runs in results.items():
+
                 aggregated = build_best_run_results_for_plot(runs)
                 aggregated_by_coeff[coefficients] = aggregated
-
+                """ 
                 plot_runs_with_statistics(
                     runs,
                     title=f"Convergence Statistics ({N_RUNS} runs) - Coefficients: {coefficients}"
                 )
-                """ plot_convergence_curves(
+                plot_convergence_curves(
                     aggregated,
                     title=f"Convergence Curve (Mean of {N_RUNS} runs) - Coefficients {coefficients}"
                 )
-                aggregated_by_coeff[coefficients] = aggregated
+                
+
                 plot_swarm_behavior(
                     aggregated,
-                    title=f"Swarm behavior (Mean of {N_RUNS} runs) - Coefficients {coefficients}"
+                    title=f"Swarm behavior (Best of {N_RUNS} runs) - Coefficients {coefficients}"
                 )
                 """
+                
             # Plot comparativo finale
             """ plot_all_swarms_convergence(
                 aggregated_by_coeff,
@@ -1692,11 +1696,12 @@ def main():
             for i in range(1,4):
                 plot_all_coeff_variations(
                     aggregated_by_coeff,
-                    title="PSO Behaviour Comparison (Mean over runs)",
+                    title=f"Swarm Behaviour Comparison (Best of {N_RUNS}) - ",
                     index_coeff=i
                 )
             # Plot della frequenza di scelta delle feature 
-            #plot_feature_frequency(results, top_k=100)
+           
+            plot_feature_frequency(results, top_k=10)
 
 
         elif EXPERIMENT == "stop":
@@ -1723,13 +1728,13 @@ def main():
             for stop, runs in results.items():
                 aggregated = build_best_run_results_for_plot(runs)
                 aggregated_by_stop[stop] = aggregated
-
+                """ 
                 plot_runs_with_statistics(
                     runs,
                     title=f"Convergence Statistics ({N_RUNS} runs) - Stop Criteria {stop}"
                 )
 
-                """ plot_convergence_curves(
+                plot_convergence_curves(
                     aggregated,
                     title=f"Convergence Curve (Mean of {N_RUNS} runs) - Coefficients {stop}"
                 )
@@ -1746,7 +1751,7 @@ def main():
             )
             
             # Plot della frequenza di scelta delle feature 
-            plot_feature_frequency(results, top_k=100)
+            plot_feature_frequency(results, top_k=10)
 
             
             
@@ -1764,7 +1769,7 @@ if __name__ == "__main__":
     # ============================================================
 
     MODE = "plot"          # "run" | "plot"
-    EXPERIMENT = "swarm"   # "swarm" | "coeff" | "stop"
+    EXPERIMENT = "stop"   # "swarm" | "coeff" | "stop"
 
     N_RUNS = 30
     DATASET_PATH = "DARWIN.csv"

@@ -1475,16 +1475,16 @@ def main():
 
         if EXPERIMENT == "swarm":
             print("Avvio esperimento: SWARM SIZE")
-            results = run_experiment_swarm_size(X, y_numeric, n_runs=N_RUNS)
+            results = run_experiment_swarm_size(X, y, n_runs=N_RUNS)
 
         elif EXPERIMENT == "coeff":
             print("Avvio esperimento: PSO COEFFICIENTS")
-            results = run_experiment_pso_coefficients(X, y_numeric, n_runs=N_RUNS, section_id=1, n_sections=1)
+            results = run_experiment_pso_coefficients(X, y, n_runs=N_RUNS, section_id=1, n_sections=1)
 
         elif EXPERIMENT == "stop":
             print("Avvio esperimento: STOPPING CRITERIA")
             #results = run_experiment_stopping_criteria(X, y_numeric, n_runs=N_RUNS)
-            results = run_experiment_stopping_criteria(X, y_numeric, n_runs=30, section_id=1, n_sections=1)
+            results = run_experiment_stopping_criteria(X, y, n_runs=30, section_id=1, n_sections=1)
 
         else:
             raise ValueError("Esperimento non riconosciuto")
