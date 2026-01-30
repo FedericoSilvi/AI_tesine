@@ -1,6 +1,7 @@
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_validate
+from sklearn.pipeline import Pipeline
 
 import pandas as pd 
 import numpy as np
@@ -28,12 +29,14 @@ def load_darwin_dataset(filepath: str) -> Tuple[pd.DataFrame, pd.Series]:
 
     return (features, classes)
 
+
 def preprocessing(X : pd.DataFrame) -> pd.DataFrame:
 
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
     return X_scaled
+
 
 def split(X : pd.DataFrame, y : pd.Series)-> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
 
@@ -42,36 +45,54 @@ def split(X : pd.DataFrame, y : pd.Series)-> Tuple[pd.DataFrame, pd.DataFrame, p
                                                         test_size=0.2, 
                                                         random_state=42, 
                                                         stratify=y)
-    return [X_train, X_test, y_train, y_test]
+    return X_train, X_test, y_train, y_test
 
+def pipeline_phase_1(seed : int = 42):
 
-def main ():
-    
-    data_path = "DAWIN.csv"
-
-    X,y = load_darwin_dataset(data_path)
-
-    X_proc, y_proc = preprocessing(X,y)
-
-    X_train, X_test, y_train, y_test = split(X_proc, y_proc)
-
-    # Configurazione default 
-    mlp_default = MLPClassifier(random_state=42)
-
-    # Esempio con parametri personalizzati completi 
-    mlp_custom = MLPClassifier(
-        hidden_layer_sizes=(400,200),       # Due layer con 400 e 200 neuroni 
-        activation='tanh',                  # Opzioni: 'identity', 'logistic', 'tanh', 'relu'
-        solver='adam',                      # Opzioni: 'lbfgs', 'sgd', 'adam'
-        alpha=0.001,                        # Penalità L2                        
-        batch_size=32,                      # Dimensione minibatch
-        learning_rate='adaptive',           # Opzioni: 'constant', 'invscaling', 'adaptive'
-        learning_rate_init=0.001,           # Learning rate iniziale     
-        max_iter=1000,                      # Numero massimo di iterazioni
-        shuffle=True,                       # Shuffle dei campioni ad ogni iterazione 
-        random_state=42,                    # Per riproducibilità
-        early_stopping=True,                # Uso validation set per early stopping 
-        validation_fraction=0.15,           # Frazioni di dati per la validation 
-        n_iter_no_change=10,                # Numero iterazioni senza miglioramento 
-        verbose=True                        # Stampa messaggi di progresso 
+    return Pipeline(
+        steps=[
+            ("scaler",StandardScaler()),
+            ("mlp",MLPClassifier(random_state=seed))
+        ]
     )
+
+def main_phase_1 ():
+    
+    data_path = "DARWIN.csv"
+
+    # Load dataset
+    print("Dataset in carimento...")
+    X,y = load_darwin_dataset(data_path)
+    print("Dataset caricato correttamente")
+
+
+    # Pipeline creation 
+    print("Pipeline in creazione...")
+    pipeline = pipeline_phase_1()
+    print("Pipeline creata correttamente")
+    
+
+    outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+    # Definiamo un set di metriche
+    scoring_metrics = ['accuracy', 'precision', 'recall', 'f1']
+
+    print("Esecuzione Cross-Validation multi-metrica...")
+    results = cross_validate(
+        pipeline, X, y, 
+        cv=outer_cv, 
+        scoring=scoring_metrics, 
+        return_train_score=False,
+        n_jobs=-1
+    )
+
+    # Visualizzazione pulita dei risultati
+    for metric in scoring_metrics:
+        mean_score = results[f'test_{metric}'].mean()
+        std_score = results[f'test_{metric}'].std()
+        print(f"{metric.capitalize()}: {mean_score:.4f} (+/- {std_score:.4f})")
+
+if __name__ == "__main__":
+    main_phase_1()
+
+    
