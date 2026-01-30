@@ -51,7 +51,9 @@ def main ():
 
     X,y = load_darwin_dataset(data_path)
 
-    X_post, y_post = preprocessing(X,y)
+    X_proc, y_proc = preprocessing(X,y)
+
+    X_train, X_test, y_train, y_test = split(X_proc, y_proc)
 
     # Configurazione default 
     mlp_default = MLPClassifier(random_state=42)
