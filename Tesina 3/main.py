@@ -77,7 +77,7 @@ def main_phase_1 ():
     # Definiamo un set di metriche
     scoring_metrics = ['accuracy', 'precision', 'recall', 'f1']
 
-    print("Esecuzione Cross-Validation multi-metrica...")
+    print("Esecuzione Cross-Validation...")
     results = cross_validate(
         pipeline, X, y, 
         cv=outer_cv, 
