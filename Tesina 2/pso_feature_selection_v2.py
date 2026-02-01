@@ -1663,11 +1663,28 @@ def main():
 
             # Aggregazione per swarm size
 
+            
+
             plot_fitness_boxplots(results)
             
             aggregated_by_coeff = {}
-
+            
             for coefficients, runs in results.items():
+                
+                #print(coefficients)
+                if coefficients == (0.4,1.5,2.5):
+                    best_fitness_list = []
+                    best_pos_list = []
+                    for run in runs:
+                        logger = run["logger"]
+                        best_fitness_list.append(run["best_fitness"])
+                        best_pos_list.append(run["best_position"])
+                        
+                    max_index = best_fitness_list.index(max(best_fitness_list))
+                    print(best_pos_list[max_index])
+                    with open("best_feat_list", "wb") as f:
+                        pickle.dump(best_pos_list[max_index], f)
+
 
                 aggregated = build_best_run_results_for_plot(runs)
                 aggregated_by_coeff[coefficients] = aggregated
@@ -1692,16 +1709,18 @@ def main():
             """ plot_all_swarms_convergence(
                 aggregated_by_coeff,
                 title="PSO Convergence Comparison (Mean over runs)"
-            ) """
+            ) 
+            """
             for i in range(1,4):
                 plot_all_coeff_variations(
                     aggregated_by_coeff,
                     title=f"Swarm Behaviour Comparison (Best of {N_RUNS}) - ",
                     index_coeff=i
                 )
+            
             # Plot della frequenza di scelta delle feature 
            
-            plot_feature_frequency(results, top_k=10)
+            #plot_feature_frequency(results, top_k=10)
 
 
         elif EXPERIMENT == "stop":
@@ -1769,7 +1788,7 @@ if __name__ == "__main__":
     # ============================================================
 
     MODE = "plot"          # "run" | "plot"
-    EXPERIMENT = "stop"   # "swarm" | "coeff" | "stop"
+    EXPERIMENT = "coeff"   # "swarm" | "coeff" | "stop"
 
     N_RUNS = 30
     DATASET_PATH = "DARWIN.csv"
