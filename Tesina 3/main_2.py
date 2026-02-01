@@ -1,60 +1,134 @@
 import pandas as pd
+import pickle
+
+from sklearn.base import clone
+from sklearn.model_selection import learning_curve
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.impute import SimpleImputer
 from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split, cross_validate, StratifiedKFold
-from sklearn.metrics import (accuracy_score, confusion_matrix, roc_curve, 
+from sklearn.metrics import (accuracy_score, confusion_matrix, roc_curve,
                              auc, classification_report, roc_auc_score)
 import time
 from typing import Tuple, List, Dict
-
 
 SEED = 42
 FILEPATH = "DARWIN.csv"
 
 
-
 class MLPLogger:
     """
-    Classe per il Logger dell'MLP base 
+    Classe per il Logger dell'MLP base
     """
 
     def __init__(self):
         self.reset()
-    
+
     def reset(self):
-        self.training_times=[]
-        self.train_scores=[]
-        self.test_scores=[]
-        self.loss_curves=[]
-        self.n_iterations=[]
+        self.training_times = []
+        self.train_scores = []
+        self.test_scores = []
+        self.loss_curves = []
+        self.n_iterations = []
+        self.sensitivities = [] # true positive rate
+        self.specificities = [] # true negative rate
+        self.aucs = [] # area under the curve
 
-    def log_run(self, mlp, train_score, test_score, train_time):
-
+    def log_run(self, mlp, train_score, test_score, train_time, sens, spec, auc):
         self.training_times.append(train_time)
         self.train_scores.append(train_score)
         self.test_scores.append(test_score)
         self.loss_curves.append(mlp.loss_curve_)
         self.n_iterations.append(mlp.n_iter_)
+        self.sensitivities.append(sens)
+        self.specificities.append(spec)
+        self.aucs.append(auc)
 
     def get_summary(self):
-        return{
-            'mean_train_acc' : np.mean(self.train_scores),
-            'std_train_acc' : np.std(self.train_scores),
-            'mean_test_acc' : np.mean(self.test_scores),
-            'std_test_acc' : np.std(self.test_scores),
-            'mean_time' : np.mean(self.training_times),
-            'std_time' : np.mean(self.training_times),
+        return {
+            'mean_train_acc': np.mean(self.train_scores),
+            'std_train_acc': np.std(self.train_scores),
+            'mean_test_acc': np.mean(self.test_scores),
+            'std_test_acc': np.std(self.test_scores),
+            'mean_time': np.mean(self.training_times),
+            'std_time': np.mean(self.training_times),
+            'mean_sens': np.mean(self.sensitivities),
+            'std_sens': np.std(self.sensitivities),
+            'mean_spec': np.mean(self.specificities),
+            'std_spec': np.std(self.specificities),
+            'mean_auc': np.mean(self.aucs),
+            'std_auc': np.std(self.aucs),
             'mean_iterations': np.mean(self.n_iterations)
         }
 
 
+# Logger esteso per CV
+class CVLogger:
+    def __init__(self):
+        self.train_scores = []
+        self.training_times = []
+        self.test_scores = []
+        self.sensitivities = []
+        self.specificities = []
+        self.aucs = []
+        self.n_iterations = []
+        self.loss_curves = []
 
+    def log_run(self, train_acc, test_acc, sens, spec, auc, train_time, n_iter, loss_curve):
+        self.train_scores.append(train_acc)
+        self.test_scores.append(test_acc)
+        self.sensitivities.append(sens)
+        self.specificities.append(spec)
+        self.aucs.append(auc)
+        self.training_times.append(train_time)
+        self.n_iterations.append(n_iter)
+        self.loss_curves.append(loss_curve)
 
-def load_dataset(filepath : str) -> Tuple[pd.DataFrame, pd.Series]:
+    def get_summary(self):
+        return {
+            'mean_train_acc': np.mean(self.train_scores),
+            'std_train_acc': np.std(self.train_scores),
+            'mean_test_acc': np.mean(self.test_scores),
+            'std_test_acc': np.std(self.test_scores),
+            'mean_time': np.mean(self.training_times),
+            'std_time': np.std(self.training_times),
+            'mean_iterations': np.mean(self.n_iterations),
+            'mean_sens': np.mean(self.sensitivities),
+            'std_sens': np.std(self.sensitivities),
+            'mean_spec': np.mean(self.specificities),
+            'std_spec': np.std(self.specificities),
+            'mean_auc': np.mean(self.aucs),
+            'std_auc': np.std(self.aucs),
+            'total_evaluations': len(self.test_scores)*5
+        }
 
-    
+def calculate_metrics(y_true: np.ndarray, y_pred: np.ndarray, y_proba: pd.Series) -> Tuple[float, float, float, float]:
+    # Accuracy
+    acc = accuracy_score(y_true, y_pred)
+
+    # true positive rate, true negative rate, false positive rate, false negative rate
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel() # ravel appiattisce la matrice in un array
+
+    # Sensibilità
+    sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
+
+    # Specificità
+    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+
+    # AUC
+    auc = 0.5  # Valore neutro di default
+    if y_proba is not None:
+        try:
+            auc = roc_auc_score(y_true, y_proba)
+        except ValueError:
+            pass
+
+    return acc, sensitivity, specificity, auc
+
+def load_dataset(filepath: str) -> Tuple[pd.DataFrame, pd.Series]:
     # Dataset loading
     dataset = pd.read_csv(filepath)
 
@@ -63,154 +137,386 @@ def load_dataset(filepath : str) -> Tuple[pd.DataFrame, pd.Series]:
     classes = dataset.iloc[:, -1]
 
     # Missing values management: median substitution
-    features = features.fillna(features.median())
-    classes = classes.map({'P':1, 'H' :0})
+    classes = classes.map({'P': 1, 'H': 0})
 
     return features, classes
 
 
-def train_mlp(X_train : pd.DataFrame, y_train : pd.Series, X_test : pd.DataFrame, y_test : pd.Series, 
-            n_runs : int =30):
+def train_mlp(X: pd.DataFrame, y: pd.Series,
+              n_runs: int = 30):
     """
     Addestramento dell'MLP sul train/test split con 30 run
     """
 
     logger = MLPLogger()
     test_pred = []
+    pipeline = None
 
     for run in range(n_runs):
-        print(f"    Run {run+1}/{n_runs}...")
+        print(f"    Run {run + 1}/{n_runs}...")
 
-        # Creazione MLP con seed dipendente da run ma che garantisce riproducibilità
-        mlp = MLPClassifier(random_state=SEED+run)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=SEED + run, stratify=y
+        )
+
+        print(f"   Train: {X_train.shape[0]} istanze, Test: {X_test.shape[0]} istanze")
+
+        # Crezione della pipeline con scaler
+        pipeline = Pipeline([
+            ("imputer", SimpleImputer(strategy='median')),
+            ("scaler", StandardScaler()),
+            ("mlp", MLPClassifier(random_state=SEED + run))
+            # Creazione MLP con seed dipendente da run ma che garantisce riproducibilità
+        ])
 
         start_time = time.time()
         # Addestramento
-        mlp.fit(X_train, y_train)
-        training_time = time.time()-start_time
+        pipeline.fit(X_train, y_train)
+        training_time = time.time() - start_time
 
-        # Predizioni 
-        y_train_pred = mlp.predict(X_train)
-        y_test_pred = mlp.predict(X_test)
+        # Predizioni
+        y_train_pred = pipeline.predict(X_train)
+        y_test_pred = pipeline.predict(X_test)
 
-        #Accuracy
-        train_acc = accuracy_score(y_train,y_train_pred)
-        test_acc = accuracy_score(y_test, y_test_pred)
+        # Predizione con probabilità per l'AUC
+        y_test_proba = pipeline.predict_proba(X_test)[:, 1] # [:, 1] prende la probabilità della classe "Positivo/Malato"
 
-        logger.log_run(mlp, train_acc, test_acc, training_time)
+        # Accuracy
+        train_acc = accuracy_score(y_train, y_train_pred)
+
+        test_acc, sens, spec, auc = calculate_metrics(y_test, y_test_pred, y_test_proba)
+
+        logger.log_run(pipeline.named_steps["mlp"], train_acc, test_acc, training_time, sens, spec, auc)
         test_pred.append(y_test_pred)
 
-    return logger, test_pred, mlp
+    return logger, test_pred, pipeline
 
-def train_mlp_with_cv(X : pd.DataFrame, y : pd.Series, n_splits = 5, n_runs = 30):
-    """
-    Cross-validation 
-    """
-    # Logger esteso per CV
-    class CVLogger:
-        def __init__(self):
-            self.training_times = []
-            self.train_scores = []      # Media per run
-            self.test_scores = []       # Media per run
-            self.all_train_scores = []  # Tutti i fold
-            self.all_test_scores = []   # Tutti i fold
-            self.all_loss_curves = []   # Tutte le curve
-            self.all_n_iterations = []  # Tutte le iterazioni
-            self.n_iterations = []      # Media per run
-            self.loss_curves = []       # Curve rappresentative
 
-        def get_summary(self):
-            return {
-                'mean_train_acc': np.mean(self.train_scores),
-                'std_train_acc': np.std(self.train_scores),
-                'mean_test_acc': np.mean(self.test_scores),
-                'std_test_acc': np.std(self.test_scores),
-                'mean_time': np.mean(self.training_times),
-                'std_time': np.std(self.training_times),
-                'mean_iterations': np.mean(self.n_iterations),
-                'total_evaluations': len(self.all_train_scores)  # n_runs × n_splits
-            }
+def train_mlp_with_cv(
+    X: pd.DataFrame,
+    y: pd.Series,
+    n_splits: int = 5,
+    n_runs: int = 30,
+    train_sizes: np.ndarray = np.linspace(0.1, 1.0, 8),
+    scoring: str = "accuracy",
+    # ---- Accuracy per epoca (warm_start) ----
+    compute_epoch_accuracy: bool = True,
+    max_epochs: int = 200,
+    epoch_mode: str = "first_run_first_fold",  # alternative: "first_run_all_folds", "all_runs_first_fold", "all"
+    mlp : MLPClassifier = None 
+):
+    """
+    Cross-validation ripetuta (n_runs) con pipeline definita UNA volta.
+    In più calcola learning curves classiche (train/val vs train_size).
+    Inoltre (opzionale) calcola accuracy per epoca usando warm_start=True.
+
+    Ritorna:
+      - logger (come prima)
+      - lc_results: dict learning curve classica
+      - epoch_results: dict accuracy-per-epoca (oppure None se disabilitato)
+    """
+
     logger = CVLogger()
-    
+
+    # Pipeline DEFINITA UNA VOLTA (config base)
+    if mlp == None :
+        base_pipeline = Pipeline([
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler()),
+            ("mlp", MLPClassifier(random_state=SEED, max_iter=200))
+        ])
+    else:
+        base_pipeline = Pipeline([
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler()),
+            ("mlp", mlp)
+        ])
+    # Accumulatori per learning curves classiche su tutte le run
+    all_lc_train_scores = []
+    all_lc_val_scores = []
+    lc_train_sizes_ref = None
+
+    # Accumulatori accuracy-per-epoca
+    epoch_results = None
+    epoch_train_curves = []
+    epoch_val_curves = []
+
+    def _should_compute_epoch_curve(run_idx: int, fold_idx: int) -> bool:
+        if not compute_epoch_accuracy:
+            return False
+        if epoch_mode == "first_run_first_fold":
+            return (run_idx == 0 and fold_idx == 0)
+        if epoch_mode == "first_run_all_folds":
+            return (run_idx == 0)
+        if epoch_mode == "all_runs_first_fold":
+            return (fold_idx == 0)
+        if epoch_mode == "all":
+            return True
+        # fallback
+        return (run_idx == 0 and fold_idx == 0)
+
     for run in range(n_runs):
-        print(f"    CV Run {run+1}/{n_runs}...")
-        
+        print(f"    CV Run {run + 1}/{n_runs}...")
+
         cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=SEED + run)
-        
-        run_train_scores = []
-        run_test_scores = []
-        run_loss_curves = []
-        run_n_iters = []
-        
+
+        # Pipeline per questa run (seed aggiornato)
+        pipeline_for_run = clone(base_pipeline).set_params(mlp__random_state=SEED + run)
+
+        fold_train_accs = []
+        fold_test_accs = []
+        fold_sens = []
+        fold_specs = []
+        fold_aucs = []
+        fold_iters = []
+        fold_loss_curve = None
+
         start_time = time.time()
-        
-        # Cross validation manuale per poter accedere a tutti i dati 
+
         for fold_idx, (train_idx, test_idx) in enumerate(cv.split(X, y)):
+            # ---- ramo A: fold "normale" (fit standard) per metriche CV ----
+            fold_pipe = clone(pipeline_for_run)
 
-            # Estrazione manuale delle fold
-            X_train_fold = X.iloc[train_idx] if isinstance(X, pd.DataFrame) else X[train_idx]
-            X_test_fold = X.iloc[test_idx] if isinstance(X, pd.DataFrame) else X[test_idx]
-            y_train_fold = y.iloc[train_idx] if isinstance(y, pd.Series) else y[train_idx]
-            y_test_fold = y.iloc[test_idx] if isinstance(y, pd.Series) else y[test_idx]
-            
-            # Creazione e addestramento del modello sulle fold individuate
-            mlp = MLPClassifier(random_state=SEED + run)
-            mlp.fit(X_train_fold, y_train_fold)
-            
-            # Predizioni 
-            y_train_pred = mlp.predict(X_train_fold)
-            y_test_pred = mlp.predict(X_test_fold)
-            
-            # Metriche
+            X_train_fold = X.iloc[train_idx]
+            X_test_fold  = X.iloc[test_idx]
+            y_train_fold = y.iloc[train_idx]
+            y_test_fold  = y.iloc[test_idx]
+
+            fold_pipe.fit(X_train_fold, y_train_fold)
+
+            y_train_pred = fold_pipe.predict(X_train_fold)
+            y_test_pred  = fold_pipe.predict(X_test_fold)
+            y_test_proba = fold_pipe.predict_proba(X_test_fold)[:, 1]
+
             train_acc = accuracy_score(y_train_fold, y_train_pred)
-            test_acc = accuracy_score(y_test_fold, y_test_pred)
-            
-            run_train_scores.append(train_acc)
-            run_test_scores.append(test_acc)
-            run_loss_curves.append(mlp.loss_curve_)
-            run_n_iters.append(mlp.n_iter_)
-            
-            # Salva anche nei risultati completi
-            logger.all_train_scores.append(train_acc)
-            logger.all_test_scores.append(test_acc)
-            logger.all_loss_curves.append(mlp.loss_curve_)
-            logger.all_n_iterations.append(mlp.n_iter_)
-        
+            fold_train_accs.append(train_acc)
+
+            test_acc, sens, spec, aucv = calculate_metrics(y_test_fold, y_test_pred, y_test_proba)
+            fold_test_accs.append(test_acc)
+            fold_sens.append(sens)
+            fold_specs.append(spec)
+            fold_aucs.append(aucv)
+
+            mlp_est = fold_pipe.named_steps["mlp"]
+            fold_iters.append(mlp_est.n_iter_)
+
+            if fold_loss_curve is None and hasattr(mlp_est, "loss_curve_"):
+                fold_loss_curve = mlp_est.loss_curve_
+
+            # ---- ramo B: accuracy PER EPOCA (warm_start) su fold selezionati ----
+            if _should_compute_epoch_curve(run, fold_idx):
+                # Pipeline uguale ma con MLP warm_start + max_iter=1
+                epoch_pipe = clone(pipeline_for_run).set_params(
+                    mlp__warm_start=True,
+                    mlp__max_iter=1,
+                    mlp__random_state=SEED + run  # per coerenza
+                )
+
+                train_acc_epoch = []
+                val_acc_epoch = []
+
+                for epoch in range(max_epochs):
+                    epoch_pipe.fit(X_train_fold, y_train_fold)
+
+                    y_tr = epoch_pipe.predict(X_train_fold)
+                    y_va = epoch_pipe.predict(X_test_fold)
+
+                    train_acc_epoch.append(accuracy_score(y_train_fold, y_tr))
+                    val_acc_epoch.append(accuracy_score(y_test_fold, y_va))
+
+                epoch_train_curves.append(train_acc_epoch)
+                epoch_val_curves.append(val_acc_epoch)
+
         training_time = time.time() - start_time
-        
-        # Media per questo run
-        logger.training_times.append(training_time)
-        logger.train_scores.append(np.mean(run_train_scores))
-        logger.test_scores.append(np.mean(run_test_scores))
-        logger.n_iterations.append(np.mean(run_n_iters))
-        logger.loss_curves.append(run_loss_curves[0])  # Rappresentativa
-    
-    return logger
 
+        logger.log_run(
+            train_acc=np.mean(fold_train_accs),
+            test_acc=np.mean(fold_test_accs),
+            sens=np.mean(fold_sens),
+            spec=np.mean(fold_specs),
+            auc=np.mean(fold_aucs),
+            train_time=training_time,
+            n_iter=np.mean(fold_iters),
+            loss_curve=fold_loss_curve
+        )
 
+        # ===== Learning curve “classica” per questa run =====
+        train_sizes_abs, train_scores, val_scores = learning_curve(
+            estimator=pipeline_for_run,
+            X=X,
+            y=y,
+            cv=cv,
+            train_sizes=train_sizes,
+            scoring=scoring,
+            n_jobs=-1,
+            shuffle=False
+        )
+
+        lc_train_sizes_ref = train_sizes_abs
+        all_lc_train_scores.append(train_scores)
+        all_lc_val_scores.append(val_scores)
+
+    # ===== Aggregazione learning curves classiche =====
+    all_lc_train_scores = np.array(all_lc_train_scores)
+    all_lc_val_scores = np.array(all_lc_val_scores)
+
+    mean_train = all_lc_train_scores.mean(axis=(0, 2))
+    std_train  = all_lc_train_scores.std(axis=(0, 2))
+    mean_val   = all_lc_val_scores.mean(axis=(0, 2))
+    std_val    = all_lc_val_scores.std(axis=(0, 2))
+
+    lc_results = {
+        "train_sizes": lc_train_sizes_ref,
+        "mean_train_score": mean_train,
+        "std_train_score": std_train,
+        "mean_val_score": mean_val,
+        "std_val_score": std_val,
+        "scoring": scoring,
+        "n_runs": n_runs,
+        "n_splits": n_splits
+    }
+
+    # ===== Aggregazione accuracy-per-epoca =====
+    if compute_epoch_accuracy and len(epoch_train_curves) > 0:
+        epoch_train_curves = np.array(epoch_train_curves)  # shape: (k, max_epochs)
+        epoch_val_curves = np.array(epoch_val_curves)
+
+        epoch_results = {
+            "epochs": np.arange(1, max_epochs + 1),
+            "mean_train_acc": epoch_train_curves.mean(axis=0),
+            "std_train_acc": epoch_train_curves.std(axis=0),
+            "mean_val_acc": epoch_val_curves.mean(axis=0),
+            "std_val_acc": epoch_val_curves.std(axis=0),
+            "mode": epoch_mode,
+            "curves_count": int(epoch_train_curves.shape[0])
+        }
+
+    return logger, lc_results, epoch_results
+
+def plot_loss_convergence(logger):
+    """
+    Visualizza tutte le curve di loss salvate nel logger.
+    Gestisce curve di lunghezza diversa calcolando una media.
+    """
+    curves = logger.loss_curves
+
+    if not curves:
+        print("Nessuna curva di loss trovata nel logger.")
+        return
+
+    plt.figure(figsize=(12, 7))
+
+    # 1. Plot di tutte le singole curve (1 per fold x 30 run)
+    for i, curve in enumerate(curves):
+        plt.plot(curve, color='deepskyblue', alpha=0.15, linewidth=1)
+
+    # Calcolo della curva MEDIA
+    # Poiché le curve hanno lunghezze diverse (le run finiscono in epoche diverse),
+    # dobbiamo uniformarle per calcolare la media.
+
+    # Troviamo la lunghezza massima tra tutte le run
+    max_len = max(len(c) for c in curves)
+
+    # Creiamo una matrice piena di NaN
+    curves_matrix = np.full((len(curves), max_len), np.nan)
+
+    # Riempiamo la matrice
+    for i, curve in enumerate(curves):
+        curves_matrix[i, :len(curve)] = curve
+
+    # Calcoliamo la media ignorando i NaN (nanmean)
+    # Questo ci dà la loss media istante per istante, finché ci sono run attive
+    mean_curve = np.nanmean(curves_matrix, axis=0)
+
+    # Plot della media
+    plt.plot(mean_curve, color='navy', linewidth=2.5, label='Loss Media')
+
+    # Grafico
+    plt.title(f"Curve di Loss: {len(curves)} Run Totali", fontsize=14, fontweight='bold')
+    plt.xlabel("Iterazioni (Epoche)", fontsize=12)
+    plt.ylabel("Valore Loss", fontsize=12)
+    plt.legend(loc='upper right')
+    plt.grid(True, linestyle='--', alpha=0.4)
+
+    min_iter = min(len(c) for c in curves)
+    max_iter = max_len
+    plt.text(0.7, 0.5,
+             f"Min Iterazioni: {min_iter}\nMax Iterazioni: {max_iter}",
+             transform=plt.gca().transAxes,
+             bbox=dict(facecolor='white', alpha=0.8))
+
+    plt.tight_layout()
+    plt.savefig("darwin_convergence_analysis.png", dpi=300)  # salva immagine
+    plt.show()
+
+def plot_learning_curves(lc_results, save_path="darwin_learning_curves.png"):
+    train_sizes = lc_results["train_sizes"]
+    mean_train = lc_results["mean_train_score"]
+    std_train  = lc_results["std_train_score"]
+    mean_val   = lc_results["mean_val_score"]
+    std_val    = lc_results["std_val_score"]
+
+    plt.figure(figsize=(10, 6))
+
+    plt.plot(train_sizes, mean_train, marker="o", label="Train score")
+    plt.fill_between(train_sizes, mean_train - std_train, mean_train + std_train, alpha=0.2)
+
+    plt.plot(train_sizes, mean_val, marker="o", label="Validation score")
+    plt.fill_between(train_sizes, mean_val - std_val, mean_val + std_val, alpha=0.2)
+
+    plt.title("Learning Curves (Accuracy)")
+    plt.xlabel("Numero di esempi di training")
+    plt.ylabel("Accuracy")
+    plt.grid(True, linestyle="--", alpha=0.4)
+    plt.legend(loc="best")
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.show()
+
+def plot_epoch_accuracy(epoch_results, save_path="accuracy_per_epoch.png"):
+    if epoch_results is None:
+        print("epoch_results è None (compute_epoch_accuracy=False o nessuna curva calcolata).")
+        return
+
+    e = epoch_results["epochs"]
+    mt = epoch_results["mean_train_acc"]
+    st = epoch_results["std_train_acc"]
+    mv = epoch_results["mean_val_acc"]
+    sv = epoch_results["std_val_acc"]
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(e, mt, label="Train accuracy")
+    plt.fill_between(e, mt - st, mt + st, alpha=0.2)
+
+    plt.plot(e, mv, label="Validation accuracy")
+    plt.fill_between(e, mv - sv, mv + sv, alpha=0.2)
+
+    plt.xlabel("Epoche")
+    plt.ylabel("Accuracy")
+    plt.title(f"Accuracy per epoca (warm_start) | mode={epoch_results['mode']} | curves={epoch_results['curves_count']}")
+    plt.grid(True, linestyle="--", alpha=0.4)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.show()
 
 
 def main_phase_1():
-    
-    print("="*70)
+    print("=" * 70)
     print("FASE 1: ANALISI MLP DEFAULT")
-    print("="*70)
-    
+    print("=" * 70)
+
     print("\nCaricamento dataset...")
     X, y = load_dataset(filepath=FILEPATH)
     print(f"   Dataset: {X.shape[0]} istanze, {X.shape[1]} features")
     print(f"   Distribuzione classi: {np.bincount(y)}")
-    
-    print("\nStandardizzazione...")
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    
+
     # ========== CROSS VALIDATION (METODO PRINCIPALE) ==========
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("CROSS VALIDATION (30 run × 5 fold = 150 valutazioni)")
-    print("="*70)
-    cv_logger = train_mlp_with_cv(X_scaled, y, n_splits=5, n_runs=30)
-    
+    print("=" * 70)
+    cv_logger, lc_results, epoch_results = train_mlp_with_cv(X, y, n_splits=5, n_runs=30)
+
     print("\nMetriche da Cross-Validation:")
     cv_summary = cv_logger.get_summary()
     print(f"   Train Accuracy: {cv_summary['mean_train_acc']:.4f} ± {cv_summary['std_train_acc']:.4f}")
@@ -218,55 +524,97 @@ def main_phase_1():
     print(f"   Tempo medio:    {cv_summary['mean_time']:.3f} ± {cv_summary['std_time']:.3f} s")
     print(f"   Iterazioni medie: {cv_summary['mean_iterations']:.1f}")
     print(f"   Valutazioni totali: {cv_summary['total_evaluations']}")
-    
+
     # ========== TRAIN/TEST SPLIT (ANALISI SUPPLEMENTARE) ==========
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TRAIN/TEST SPLIT (per confronto)")
-    print("="*70)
-    
-    print("\nSplitting...")
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=SEED, stratify=y
-    )
-    print(f"   Train: {X_train.shape[0]} istanze, Test: {X_test.shape[0]} istanze")
-    
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-    
+    print("=" * 70)
+
     print("\nTraining con 30 run...")
     split_logger, test_predictions, final_model = train_mlp(
-        X_train_scaled, y_train, X_test_scaled, y_test, n_runs=30
+        X, y, n_runs=30
     )
-    
+
     print("\nMetriche da Train/Test Split:")
     split_summary = split_logger.get_summary()
     print(f"   Train Accuracy: {split_summary['mean_train_acc']:.4f} ± {split_summary['std_train_acc']:.4f}")
     print(f"   Test Accuracy:  {split_summary['mean_test_acc']:.4f} ± {split_summary['std_test_acc']:.4f}")
     print(f"   Tempo medio:    {split_summary['mean_time']:.3f} ± {split_summary['std_time']:.3f} s")
     print(f"   Iterazioni medie: {split_summary['mean_iterations']:.1f}")
-    
+
     # ========== REPORT FINALE ==========
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("REPORT FINALE - FASE 1")
-    print("="*70)
-    print("Configurazione: MLPClassifier(random_state=42)")
+    print("=" * 70)
+    print("Configurazione: MLPClassifier(random_state=(42 + run_id))")
     print(f"Dataset: {X.shape[0]} istanze, {X.shape[1]} features")
-    
-    print("\n--- CROSS VALIDATION (metodo principale) ---")
-    print(f"Accuracy:        {cv_summary['mean_test_acc']:.4f} ± {cv_summary['std_test_acc']:.4f}")
-    print(f"Tempo medio:     {cv_summary['mean_time']:.3f}s")
+
+    print("\n--- RISULTATI CROSS VALIDATION (metodo principale) ---")
+    print(f"{'Metrica':<15} | {'Media':<10} | {'Std Dev':<10}")
+    print("-" * 45)
+    print(f"{'Test Accuracy':<15} | {cv_summary['mean_test_acc']:.4f}     | ± {cv_summary['std_test_acc']:.4f}")
+    print(f"{'Sensitivity':<15} | {cv_summary['mean_sens']:.4f}     | ± {cv_summary['std_sens']:.4f}")
+    print(f"{'Specificity':<15} | {cv_summary['mean_spec']:.4f}     | ± {cv_summary['std_spec']:.4f}")
+    print(f"{'AUC':<15} | {cv_summary['mean_auc']:.4f}     | ± {cv_summary['std_auc']:.4f}")
+    print("-" * 45)
+
+    print(f"Tempo medio:     {cv_summary['mean_time']:.3f} s")
     print(f"Iterazioni:      {cv_summary['mean_iterations']:.1f}")
+    print(f"Train Accuracy:  {cv_summary['mean_train_acc']:.4f}")
     print(f"Valutazioni:     {cv_summary['total_evaluations']}")
-    
-    print("\n--- TRAIN/TEST SPLIT (confronto) ---")
-    print(f"Accuracy:        {split_summary['mean_test_acc']:.4f} ± {split_summary['std_test_acc']:.4f}")
+
+    print("\n--- RISULTATI TRAIN/TEST SPLIT (confronto) ---")
+    print(f"{'Metrica':<15} | {'Media':<10} | {'Std Dev':<10}")
+    print("-" * 45)
+    print(f"{'Test Accuracy':<15} | {split_summary['mean_test_acc']:.4f}     | ± {split_summary['std_test_acc']:.4f}")
+    print(f"{'Sensitivity':<15} | {split_summary['mean_sens']:.4f}     | ± {split_summary['std_sens']:.4f}")
+    print(f"{'Specificity':<15} | {split_summary['mean_spec']:.4f}     | ± {split_summary['std_spec']:.4f}")
+    print(f"{'AUC':<15} | {split_summary['mean_auc']:.4f}     | ± {split_summary['std_auc']:.4f}")
+    print("-" * 45)
+
     print(f"Tempo medio:     {split_summary['mean_time']:.3f}s")
     print(f"Iterazioni:      {split_summary['mean_iterations']:.1f}")
-    
-    print("="*70)
-    
-    return cv_logger, split_logger, final_model
+    print(f"Train Accuracy:   {split_summary['mean_train_acc']:.4f}")
+
+    print("=" * 70)
+
+    return cv_logger, split_logger, final_model, lc_results, epoch_results
 
 
 if __name__ == "__main__":
-    main_phase_1()
+
+    MODE = "run"                # run, plot
+    EXPERIMENT = "default"      # default, scenario 1, scenario 2, scenario 3
+
+    LOGGER_FILE = "pickles/"+EXPERIMENT+"_cv_logger"
+    MODEL_FILE = "pickles/"+EXPERIMENT+"_model"
+    LC_FILE = "pickles/"+EXPERIMENT+"_lc"
+    EPOCH_FILE = "pickles/"+EXPERIMENT+"_epoch"
+
+    if MODE == "run":
+        if EXPERIMENT == "default":
+            cv_logger, split_logger, final_model, lc_results, epoch_results = main_phase_1()
+        
+        with open(LOGGER_FILE, "wb") as f:
+            pickle.dump(cv_logger, f)
+        with open(MODEL_FILE, "wb") as f:
+            pickle.dump(final_model, f)
+        with open(LC_FILE, "wb") as f:
+            pickle.dump(lc_results, f)
+        with open(EPOCH_FILE, "wb") as f:
+            pickle.dump(epoch_results, f)
+        
+    elif MODE == "plot":
+
+        with open(LOGGER_FILE, "rb") as f:
+            cv_logger = pickle.load(f)
+        with open(MODEL_FILE, "rb") as f:
+            model = pickle.load(f)
+        with open(LC_FILE, "rb") as f:
+            lc_results = pickle.load(f)
+        with open(EPOCH_FILE, "rb") as f:
+            epoch_results = pickle.load(f)
+
+        plot_loss_convergence(cv_logger)
+        plot_learning_curves(lc_results)
+        plot_epoch_accuracy(epoch_results)
