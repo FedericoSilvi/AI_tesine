@@ -104,7 +104,7 @@ if __name__ == "__main__":
 
     MODE = "plot"              # train, plot
     EXPERIMENT = "default"      # default, architecture, learning_rate, regulation
-    SELECTION = False           # False (no selezione), True (selezione)
+    SELECTION = True           # False (no selezione), True (selezione)
 
     LOGGER_FILE = "pickles/"+EXPERIMENT+"_cv_logger"
     MODEL_FILE = "pickles/"+EXPERIMENT+"_model"
@@ -112,17 +112,15 @@ if __name__ == "__main__":
     EPOCH_FILE = "pickles/"+EXPERIMENT+"_epoch"
     X_TEST_FILE ="pickles/"+EXPERIMENT+"_x_test"
     Y_TEST_FILE = "pickles/"+EXPERIMENT+"y_test"
-
+    WITH_SEL= "_with_sel"
     if SELECTION == False:
-        LOGGER_FILE+="_no_sel"
-        MODEL_FILE+="_no_sel"
-        LC_FILE+="_no_sel"
-        EPOCH_FILE+="_no_sel"
-    else:
-        LOGGER_FILE+="_with_sel"
-        MODEL_FILE+="_with_sel"
-        LC_FILE+="_with_sel"
-        EPOCH_FILE+="_with_sel"
+        WITH_SEL = "_no_sel"
+        
+    
+    LOGGER_FILE+=WITH_SEL
+    MODEL_FILE+=WITH_SEL
+    LC_FILE+=WITH_SEL
+    EPOCH_FILE+=WITH_SEL
 
     if MODE == "train":
         if EXPERIMENT == "default":
@@ -169,14 +167,12 @@ if __name__ == "__main__":
 
         print(f"Tempo totale {cv_summary['total_time']:.2f} sec, {cv_summary['total_time']/60:.2f} min")
 
-        plot_loss_convergence(cv_logger)
-        plot_learning_curves(lc_results)
-        plot_epoch_accuracy(epoch_results)
-
-        
-        plot_cv_confusion_matrix(y_test, y_pred, ['P','H'],scenario=EXPERIMENT)
-        plot_cv_roc_curve(y_true_list=y_test,y_proba_list=y_proba,scenario=EXPERIMENT)
-        plot_accuracy_distribution(cv_logger,scenario=EXPERIMENT)
-        plot_accuracy_boxplot(cv_logger,scenario=EXPERIMENT)
-        plot_cv_prediction_stability(y_test,y_pred,scenario=EXPERIMENT)
+        plot_loss_convergence(cv_logger,scenario=EXPERIMENT+WITH_SEL)
+        plot_learning_curves(lc_results,scenario=EXPERIMENT+WITH_SEL)
+        plot_epoch_accuracy(epoch_results,scenario=EXPERIMENT+WITH_SEL)
+        plot_cv_confusion_matrix(y_test, y_pred, ['P','H'],scenario=EXPERIMENT+WITH_SEL)
+        plot_cv_roc_curve(y_true_list=y_test,y_proba_list=y_proba,scenario=EXPERIMENT+WITH_SEL)
+        plot_accuracy_distribution(cv_logger,scenario=EXPERIMENT+WITH_SEL)
+        plot_accuracy_boxplot(cv_logger,scenario=EXPERIMENT+WITH_SEL)
+        plot_cv_prediction_stability(y_test,y_pred,scenario=EXPERIMENT+WITH_SEL)
     

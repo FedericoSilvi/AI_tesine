@@ -63,7 +63,7 @@ def plot_loss_convergence(logger,scenario = "_",save_path="_convergence_analysis
              bbox=dict(facecolor='white', alpha=0.8))
 
     plt.tight_layout()
-    plt.savefig("Immagini/"+scenario+save_path, dpi=300)  # salva immagine
+    plt.savefig("Immagini/"+scenario+"/"+save_path, dpi=300)  # salva immagine
     plt.show()
 
 def plot_learning_curves(lc_results, scenario ="_", save_path="_darwin_learning_curves.png"):
@@ -87,7 +87,7 @@ def plot_learning_curves(lc_results, scenario ="_", save_path="_darwin_learning_
     plt.grid(True, linestyle="--", alpha=0.4)
     plt.legend(loc="best")
     plt.tight_layout()
-    plt.savefig("Immagini/"+scenario+save_path, dpi=300)
+    plt.savefig("Immagini/"+scenario+"/"+save_path, dpi=300)
     plt.show()
 
 def plot_epoch_accuracy(epoch_results, scenario ="_", save_path="_accuracy_per_epoch.png"):
@@ -114,7 +114,7 @@ def plot_epoch_accuracy(epoch_results, scenario ="_", save_path="_accuracy_per_e
     plt.grid(True, linestyle="--", alpha=0.4)
     plt.legend()
     plt.tight_layout()
-    plt.savefig("Immagini/"+scenario+save_path, dpi=300)
+    plt.savefig("Immagini/"+scenario+"/"+save_path, dpi=300)
     plt.show()
 
 def plot_cv_confusion_matrix(y_true_list, y_pred_list, classes, scenario ="_",save_path="_total_confusion_matrix",title='Confusion Matrix (CV Total)', cmap=plt.cm.Blues):
@@ -167,7 +167,7 @@ def plot_cv_confusion_matrix(y_true_list, y_pred_list, classes, scenario ="_",sa
                     color="white" if cm[i, j] > thresh else "black")
     
     fig.tight_layout()
-    plt.savefig("Immagini/"+scenario+save_path, dpi=300)
+    plt.savefig("Immagini/"+scenario+"/"+save_path, dpi=300)
     plt.show()
 
 
@@ -227,11 +227,11 @@ def plot_cv_roc_curve(y_true_list, y_proba_list, scenario ="_",save_path="_roc_c
     plt.title(title)
     plt.legend(loc="lower right")
     plt.grid(True, alpha=0.3)
-    plt.savefig("Immagini/"+scenario+save_path, dpi=300)
+    plt.savefig("Immagini/"+scenario+"/"+save_path, dpi=300)
     plt.show()
 
 
-def plot_accuracy_distribution(cv_logger, scenario ="_",save_path ="accuracy_distribution",title="Distribuzione dell'Accuracy"):
+def plot_accuracy_distribution(cv_logger, scenario ="_",save_path ="_accuracy_distribution",title="Distribuzione dell'Accuracy"):
     scores = cv_logger.test_scores
     
     plt.figure(figsize=(8, 6))
@@ -249,11 +249,11 @@ def plot_accuracy_distribution(cv_logger, scenario ="_",save_path ="accuracy_dis
     plt.ylabel("Frequenza")
     plt.grid(axis='y', linestyle='--', alpha=0.6)
     plt.legend()
-    plt.savefig("Immagini/"+scenario+save_path, dpi=300)
+    plt.savefig("Immagini/"+scenario+"/"+save_path, dpi=300)
 
     plt.show()
 
-def plot_accuracy_boxplot(cv_logger, scenario ="_",save_path ="accuracy_boxplot", title="Box Plot Accuracy"):
+def plot_accuracy_boxplot(cv_logger, scenario ="_",save_path ="_accuracy_boxplot", title="Box Plot Accuracy"):
     scores = cv_logger.test_scores
     
     plt.figure(figsize=(6, 6))
@@ -271,11 +271,11 @@ def plot_accuracy_boxplot(cv_logger, scenario ="_",save_path ="accuracy_boxplot"
     
     plt.ylabel("Accuracy")
     plt.grid(axis='y', linestyle='--', alpha=0.6)
-    plt.savefig("Immagini/"+scenario+save_path, dpi=300)
+    plt.savefig("Immagini/"+scenario+"/"+save_path, dpi=300)
 
     plt.show()
 
-def plot_cv_prediction_stability(y_true_list, y_pred_list, n_runs=30, scenario ="_",save_path="_roc_curves", title="Analisi Stabilità delle Predizioni (CV)"):
+def plot_cv_prediction_stability(y_true_list, y_pred_list, n_runs=30, scenario ="_",save_path="_prediction_stability", title="Analisi Stabilità delle Predizioni (CV)"):
     """
     y_true_list: lista di liste/array (tutti i fold di tutte le run)
     y_pred_list: lista di liste/array (tutte le predizioni di tutte le run)
@@ -342,7 +342,7 @@ def plot_cv_prediction_stability(y_true_list, y_pred_list, n_runs=30, scenario =
     ax2.grid(True, alpha=0.15)
 
     plt.tight_layout()
-    plt.savefig("Immagini/"+scenario+save_path, dpi=300)
+    plt.savefig("Immagini/"+scenario+"/"+save_path, dpi=300)
 
     plt.show()
 
