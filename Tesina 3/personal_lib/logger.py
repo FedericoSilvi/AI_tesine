@@ -82,6 +82,7 @@ class CVLogger:
             'std_train_acc': np.std(self.train_scores),
             'mean_test_acc': np.mean(self.test_scores),
             'std_test_acc': np.std(self.test_scores),
+            'total_time' : np.sum(self.training_times),
             'mean_time': np.mean(self.training_times),
             'std_time': np.std(self.training_times),
             'mean_iterations': np.mean(self.n_iterations),

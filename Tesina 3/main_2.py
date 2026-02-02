@@ -102,8 +102,8 @@ def main_phase_1(feature_selection : bool = False, filepath : str ="DARWIN.csv",
 
 if __name__ == "__main__":
 
-    MODE = "train"              # train, plot
-    EXPERIMENT = "regulation"      # default, architecture, learning_rate, regulation
+    MODE = "plot"              # train, plot
+    EXPERIMENT = "default"      # default, architecture, learning_rate, regulation
     SELECTION = False           # False (no selezione), True (selezione)
 
     LOGGER_FILE = "pickles/"+EXPERIMENT+"_cv_logger"
@@ -166,6 +166,8 @@ if __name__ == "__main__":
         y_test = cv_summary['y_true']
         y_pred = cv_summary['y_pred']
         y_proba = cv_summary['y_proba']
+
+        print(f"Tempo totale {cv_summary['total_time']:.2f} sec, {cv_summary['total_time']/60:.2f} min")
 
         plot_loss_convergence(cv_logger)
         plot_learning_curves(lc_results)
