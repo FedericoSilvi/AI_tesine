@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore")
 
 
 
-def main_phase_1(feature_selection : bool = False, filepath : str ="DARWIN.csv"):
+def main_phase_1(feature_selection : bool = False, filepath : str ="DARWIN.csv", mlp : MLPClassifier = None):
     print("=" * 70)
     print("FASE 1: ANALISI MLP DEFAULT")
     print("=" * 70)
@@ -31,7 +31,7 @@ def main_phase_1(feature_selection : bool = False, filepath : str ="DARWIN.csv")
     print("\n" + "=" * 70)
     print("CROSS VALIDATION (30 run × 5 fold = 150 valutazioni)")
     print("=" * 70)
-    cv_logger, lc_results, epoch_results = train_mlp_with_cv(X_train, y_train, n_splits=5, n_runs=30, epoch_mode="all")
+    cv_logger, lc_results, epoch_results = train_mlp_with_cv(X_train, y_train, n_splits=5, n_runs=30, epoch_mode="all",mlp=mlp)
 
     print("\nMetriche da Cross-Validation:")
     cv_summary = cv_logger.get_summary()
@@ -102,8 +102,8 @@ def main_phase_1(feature_selection : bool = False, filepath : str ="DARWIN.csv")
 
 if __name__ == "__main__":
 
-    MODE = "plot"              # train, plot
-    EXPERIMENT = "default"      # default, scenario 1, scenario 2, scenario 3
+    MODE = "train"              # train, plot
+    EXPERIMENT = "regulation"      # default, architecture, learning_rate, regulation
     SELECTION = False           # False (no selezione), True (selezione)
 
     LOGGER_FILE = "pickles/"+EXPERIMENT+"_cv_logger"
@@ -128,6 +128,19 @@ if __name__ == "__main__":
         if EXPERIMENT == "default":
             cv_logger, split_logger, final_model, lc_results, epoch_results= main_phase_1(SELECTION)
         
+        elif EXPERIMENT == "architecture":
+            mlp_configs = get_mlp_config(scenario=EXPERIMENT)
+            print(f"Generate {len(mlp_configs)} combinazioni di MLP.")
+
+        elif EXPERIMENT == "learning_rate":
+            mlp_configs = get_mlp_config(scenario=EXPERIMENT)
+            print(f"Generate {len(mlp_configs)} combinazioni di MLP.")
+        
+        elif EXPERIMENT == "regulation":
+            mlp_configs = get_mlp_config(scenario=EXPERIMENT)
+            print(f"Generate {len(mlp_configs)} combinazioni di MLP.")
+
+
         with open(LOGGER_FILE, "wb") as f:
             pickle.dump(cv_logger, f)
         with open(MODEL_FILE, "wb") as f:
