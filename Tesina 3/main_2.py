@@ -1,12 +1,13 @@
 import pickle
+from typing import Dict, List
 import warnings
 
 from personal_lib.visualization import *
 
 from personal_lib.train import *
+from sklearn.exceptions import ConvergenceWarning
 
-
-warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 
 
@@ -31,7 +32,7 @@ def main_phase_1(feature_selection : bool = False, filepath : str ="DARWIN.csv",
     print("\n" + "=" * 70)
     print("CROSS VALIDATION (30 run × 5 fold = 150 valutazioni)")
     print("=" * 70)
-    cv_logger, lc_results, epoch_results = train_mlp_with_cv(X_train, y_train, n_splits=5, n_runs=30, epoch_mode="all",mlp=mlp)
+    cv_logger, lc_results, epoch_results = train_mlp_with_cv(X, y, n_splits=5, n_runs=30, epoch_mode="all",mlp=mlp)
 
     print("\nMetriche da Cross-Validation:")
     cv_summary = cv_logger.get_summary()
@@ -99,19 +100,43 @@ def main_phase_1(feature_selection : bool = False, filepath : str ="DARWIN.csv",
 
     return cv_logger, split_logger, final_model, lc_results, epoch_results
 
+def main_phase_2(mlp_configs : Dict, feature_selection : bool = False, filepath : str ="DARWIN.csv",):
+
+    cv_logger_dict ={}
+    lc_results_dict={}
+    epoch_results_dict={}
+
+    count=1
+    n_config = len(mlp_configs)
+    for config, mlp in mlp_configs.items():
+
+       
+
+        print(f"Configurazione {count}/{n_config}") 
+
+        X, y = load_dataset(filepath=filepath,selection=feature_selection)
+        cv_logger, lc_results, epoch_results = train_mlp_with_cv(X, y, n_splits=5, n_runs=30, epoch_mode="all",mlp=mlp)
+
+        cv_logger_dict[config]=cv_logger
+        lc_results_dict[config]=lc_results
+        epoch_results_dict[config]=epoch_results
+        count+=1
+
+    return cv_logger_dict, lc_results_dict, epoch_results_dict
+
+
 
 if __name__ == "__main__":
 
-    MODE = "plot"              # train, plot
-    EXPERIMENT = "default"      # default, architecture, learning_rate, regulation
+    MODE = "train"              # train, plot
+    EXPERIMENT = "architecture"      # default, architecture, learning_rate, regulation
     SELECTION = True           # False (no selezione), True (selezione)
 
     LOGGER_FILE = "pickles/"+EXPERIMENT+"_cv_logger"
     MODEL_FILE = "pickles/"+EXPERIMENT+"_model"
     LC_FILE = "pickles/"+EXPERIMENT+"_lc"
     EPOCH_FILE = "pickles/"+EXPERIMENT+"_epoch"
-    X_TEST_FILE ="pickles/"+EXPERIMENT+"_x_test"
-    Y_TEST_FILE = "pickles/"+EXPERIMENT+"y_test"
+    
     WITH_SEL= "_with_sel"
     if SELECTION == False:
         WITH_SEL = "_no_sel"
@@ -129,14 +154,19 @@ if __name__ == "__main__":
         elif EXPERIMENT == "architecture":
             mlp_configs = get_mlp_config(scenario=EXPERIMENT)
             print(f"Generate {len(mlp_configs)} combinazioni di MLP.")
+            cv_logger, lc_results, epoch_results = main_phase_2(mlp_configs=mlp_configs, feature_selection=SELECTION)
+
 
         elif EXPERIMENT == "learning_rate":
             mlp_configs = get_mlp_config(scenario=EXPERIMENT)
             print(f"Generate {len(mlp_configs)} combinazioni di MLP.")
+            cv_logger, lc_results, epoch_results = main_phase_2(mlp_configs=mlp_configs, feature_selection=SELECTION)
+            
         
         elif EXPERIMENT == "regulation":
             mlp_configs = get_mlp_config(scenario=EXPERIMENT)
             print(f"Generate {len(mlp_configs)} combinazioni di MLP.")
+            cv_logger, lc_results, epoch_results = main_phase_2(mlp_configs=mlp_configs, feature_selection=SELECTION)
 
 
         with open(LOGGER_FILE, "wb") as f:

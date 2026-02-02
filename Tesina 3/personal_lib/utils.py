@@ -62,7 +62,8 @@ def load_dataset(filepath: str, selection : bool = False) -> Tuple[pd.DataFrame,
 
 def get_mlp_config(scenario : str ="architecture",SEED : int =42):
 
-    mlp_configs =[]
+    mlp_configs ={}
+    
 
     if scenario =="architecture":
         hidden_layers = [(200,), (400,), (600,),(400,200),(600,300),(800,400),(400,200,100),(600,300,150)]
@@ -70,12 +71,12 @@ def get_mlp_config(scenario : str ="architecture",SEED : int =42):
 
         for arch in hidden_layers:
             for act in activations:
-                mlp = MLPClassifier(
+                key = f"arch_{arch}_act_{act}"
+                mlp_configs[key] = MLPClassifier(
                     hidden_layer_sizes=arch,
                     activation=act,
                     random_state=SEED
                 )
-                mlp_configs.append(mlp)
 
     elif scenario =="learning_rate":
         learning_rates_init = [0.0001, 0.001, 0.01, 0.1]
@@ -87,14 +88,14 @@ def get_mlp_config(scenario : str ="architecture",SEED : int =42):
             for policy in learning_rates_policy:
                 for sol in solvers:
                     for size in batch_sizes:
-                        mlp=MLPClassifier(
+                        key = f"lr_{init}_pol_{policy}_sol_{sol}_batch_{size}"
+                        mlp_configs[key]=MLPClassifier(
                             learning_rate_init=init,
                             learning_rate=policy,
                             solver=sol,
                             batch_size=size,
                             random_state=SEED
                         )
-                        mlp_configs.append(mlp)
     elif scenario =="regulation":
         alphas = [0.0001, 0.001, 0.01, 0.1, 0.5]
         validation_split = [0.1,0.15,0.2]
@@ -103,12 +104,11 @@ def get_mlp_config(scenario : str ="architecture",SEED : int =42):
         for alpha in alphas:
             for val_frac in validation_split:
                 for iter_no_change in N_iter_no_change:
-                    mlp=MLPClassifier(
+                    key = f"alpha_{alpha}_val_{val_frac}_iter_{iter_no_change}"
+                    mlp_configs[key]=MLPClassifier(
                         early_stopping=True,
                         alpha=alpha,
                         validation_fraction=val_frac,
                         n_iter_no_change=iter_no_change
                     )
-                    mlp_configs.append(mlp)
-
     return mlp_configs
