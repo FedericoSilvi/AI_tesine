@@ -5,12 +5,12 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-
+from scipy.stats import gaussian_kde
 from sklearn.metrics import (confusion_matrix, roc_curve,auc)
 
 
 
-def plot_loss_convergence(logger,save_path="Immagini/darwin_convergence_analysis.png"):
+def plot_loss_convergence(logger,scenario = "_",save_path="_convergence_analysis.png"):
     """
     Visualizza tutte le curve di loss salvate nel logger.
     Gestisce curve di lunghezza diversa calcolando una media.
@@ -63,10 +63,10 @@ def plot_loss_convergence(logger,save_path="Immagini/darwin_convergence_analysis
              bbox=dict(facecolor='white', alpha=0.8))
 
     plt.tight_layout()
-    plt.savefig(save_path, dpi=300)  # salva immagine
+    plt.savefig("Immagini/"+scenario+save_path, dpi=300)  # salva immagine
     plt.show()
 
-def plot_learning_curves(lc_results, save_path="Immagini/darwin_learning_curves.png"):
+def plot_learning_curves(lc_results, scenario ="_", save_path="_darwin_learning_curves.png"):
     train_sizes = lc_results["train_sizes"]
     mean_train = lc_results["mean_train_score"]
     std_train  = lc_results["std_train_score"]
@@ -87,10 +87,10 @@ def plot_learning_curves(lc_results, save_path="Immagini/darwin_learning_curves.
     plt.grid(True, linestyle="--", alpha=0.4)
     plt.legend(loc="best")
     plt.tight_layout()
-    plt.savefig(save_path, dpi=300)
+    plt.savefig("Immagini/"+scenario+save_path, dpi=300)
     plt.show()
 
-def plot_epoch_accuracy(epoch_results, save_path="Immagini/accuracy_per_epoch.png"):
+def plot_epoch_accuracy(epoch_results, scenario ="_", save_path="_accuracy_per_epoch.png"):
     if epoch_results is None:
         print("epoch_results è None (compute_epoch_accuracy=False o nessuna curva calcolata).")
         return
@@ -114,12 +114,12 @@ def plot_epoch_accuracy(epoch_results, save_path="Immagini/accuracy_per_epoch.pn
     plt.grid(True, linestyle="--", alpha=0.4)
     plt.legend()
     plt.tight_layout()
-    plt.savefig(save_path, dpi=300)
+    plt.savefig("Immagini/"+scenario+save_path, dpi=300)
     plt.show()
 
-def plot_cv_confusion_matrix(y_true_list, y_pred_list, classes, title='Confusion Matrix (CV Total)', cmap=plt.cm.Blues):
+def plot_cv_confusion_matrix(y_true_list, y_pred_list, classes, scenario ="_",save_path="_total_confusion_matrix",title='Confusion Matrix (CV Total)', cmap=plt.cm.Blues):
     """
-    Gestisce liste di liste, liste di Series o liste di array provenienti dai fold.
+    Restituisce la confusion matrix di tutte le predizioni fatte sulla validation del CV
     """
     # 1. Trasformazione forzata in liste piatte
     def flatten(input_list):
@@ -167,13 +167,15 @@ def plot_cv_confusion_matrix(y_true_list, y_pred_list, classes, title='Confusion
                     color="white" if cm[i, j] > thresh else "black")
     
     fig.tight_layout()
+    plt.savefig("Immagini/"+scenario+save_path, dpi=300)
     plt.show()
 
 
-def plot_cv_roc_curve(y_true_list, y_proba_list, title='ROC Curve - Media su 30 Run'):
+def plot_cv_roc_curve(y_true_list, y_proba_list, scenario ="_",save_path="_roc_curves",title='ROC Curve - Media su 30 Run'):
     """
-    y_true_list: Lista di 30 array (uno per run)
-    y_proba_list: Lista di 30 array (uno per run)
+    Grafica:
+    - una curva ROC per ogni run (30 curve con colore leggero)
+    - una curva ROC media tra le 30 (colore più marcato)
     """
     plt.figure(figsize=(10, 8))
     
@@ -225,42 +227,55 @@ def plot_cv_roc_curve(y_true_list, y_proba_list, title='ROC Curve - Media su 30 
     plt.title(title)
     plt.legend(loc="lower right")
     plt.grid(True, alpha=0.3)
+    plt.savefig("Immagini/"+scenario+save_path, dpi=300)
     plt.show()
 
-def plot_score_distribution(cv_logger, title="Analisi Stabilità Accuratezza (CV)"):
+
+def plot_accuracy_distribution(cv_logger, scenario ="_",save_path ="accuracy_distribution",title="Distribuzione dell'Accuracy"):
     scores = cv_logger.test_scores
     
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-
-    # 1. Istogramma con curva di densità (KDE)
-    ax1.hist(scores, bins=10, color='skyblue', edgecolor='black', alpha=0.7, density=True)
-    # Calcolo della densità per la linea fluida
-    from scipy.stats import gaussian_kde
+    plt.figure(figsize=(8, 6))
+    
+    # Istogramma
+    plt.hist(scores, bins=10, color='skyblue', edgecolor='black', alpha=0.7, density=True)
+    
+    # Calcolo KDE
     kde = gaussian_kde(scores)
     x_range = np.linspace(min(scores) - 0.05, max(scores) + 0.05, 100)
-    ax1.plot(x_range, kde(x_range), color='navy', lw=2, label='Densità (KDE)')
+    plt.plot(x_range, kde(x_range), color='navy', lw=2, label='Densità (KDE)')
     
-    ax1.set_title("Distribuzione delle Accuratezze")
-    ax1.set_xlabel("Accuracy")
-    ax1.set_ylabel("Frequenza")
-    ax1.grid(axis='y', linestyle='--', alpha=0.6)
-    ax1.legend()
+    plt.title(title, fontsize=14, fontweight='bold')
+    plt.xlabel("Accuracy")
+    plt.ylabel("Frequenza")
+    plt.grid(axis='y', linestyle='--', alpha=0.6)
+    plt.legend()
+    plt.savefig("Immagini/"+scenario+save_path, dpi=300)
 
-    # 2. Box Plot
-    ax2.boxplot(scores, vert=True, patch_artist=True, 
+    plt.show()
+
+def plot_accuracy_boxplot(cv_logger, scenario ="_",save_path ="accuracy_boxplot", title="Box Plot Accuracy"):
+    scores = cv_logger.test_scores
+    
+    plt.figure(figsize=(6, 6))
+    
+    # Creazione del boxplot
+    plt.boxplot(scores, vert=True, patch_artist=True, 
                 boxprops=dict(facecolor="lightblue", color="navy"),
                 medianprops=dict(color="red", lw=2))
     
-    ax2.set_title("Box Plot Accuratezza")
-    ax2.set_xticklabels(["Validation Score"])
-    ax2.set_ylabel("Accuracy")
-    ax2.grid(axis='y', linestyle='--', alpha=0.6)
+    plt.title(title, fontsize=14, fontweight='bold')
+    
+    # FIX: Usiamo plt.xticks() invece di plt.xticklabels()
+    # Il primo argomento è la posizione [1], il secondo è la label
+    plt.xticks([1], ["Validation Score"])
+    
+    plt.ylabel("Accuracy")
+    plt.grid(axis='y', linestyle='--', alpha=0.6)
+    plt.savefig("Immagini/"+scenario+save_path, dpi=300)
 
-    plt.suptitle(title, fontsize=16, fontweight='bold')
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()
 
-def plot_cv_prediction_stability(y_true_list, y_pred_list, n_runs=30, title="Analisi Stabilità delle Predizioni (CV)"):
+def plot_cv_prediction_stability(y_true_list, y_pred_list, n_runs=30, scenario ="_",save_path="_roc_curves", title="Analisi Stabilità delle Predizioni (CV)"):
     """
     y_true_list: lista di liste/array (tutti i fold di tutte le run)
     y_pred_list: lista di liste/array (tutte le predizioni di tutte le run)
@@ -327,6 +342,8 @@ def plot_cv_prediction_stability(y_true_list, y_pred_list, n_runs=30, title="Ana
     ax2.grid(True, alpha=0.15)
 
     plt.tight_layout()
+    plt.savefig("Immagini/"+scenario+save_path, dpi=300)
+
     plt.show()
 
     # Metriche sintetiche

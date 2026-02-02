@@ -159,8 +159,9 @@ if __name__ == "__main__":
         plot_epoch_accuracy(epoch_results)
 
         
-        plot_cv_confusion_matrix(y_test, y_pred, ['P','H'])
-        plot_cv_roc_curve(y_true_list=y_test,y_proba_list=y_proba)
-        plot_score_distribution(cv_logger)
-        plot_cv_prediction_stability(y_test,y_pred)
+        plot_cv_confusion_matrix(y_test, y_pred, ['P','H'],scenario=EXPERIMENT)
+        plot_cv_roc_curve(y_true_list=y_test,y_proba_list=y_proba,scenario=EXPERIMENT)
+        plot_accuracy_distribution(cv_logger,scenario=EXPERIMENT)
+        plot_accuracy_boxplot(cv_logger,scenario=EXPERIMENT)
+        plot_cv_prediction_stability(y_test,y_pred,scenario=EXPERIMENT)
     
