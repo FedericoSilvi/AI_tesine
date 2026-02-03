@@ -96,7 +96,7 @@ def train_mlp_with_cv(
       - lc_results: dict learning curve classica
       - epoch_results: dict accuracy-per-epoca (oppure None se disabilitato)
     """
-
+    warnings.filterwarnings("ignore")
     logger = CVLogger()
 
     # Pipeline DEFINITA UNA VOLTA (config base)
