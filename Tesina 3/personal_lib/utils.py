@@ -31,7 +31,7 @@ def calculate_metrics(y_true: np.ndarray, y_pred: np.ndarray, y_proba: pd.Series
 
     return acc, sensitivity, specificity, auc
 
-def load_dataset(filepath: str, selection : bool = False) -> Tuple[pd.DataFrame, pd.Series]:
+def load_dataset(filepath: str, selection : bool = False,  verbose : bool = False) -> Tuple[pd.DataFrame, pd.Series]:
     # Dataset loading
     dataset = pd.read_csv(filepath)
 
@@ -42,17 +42,19 @@ def load_dataset(filepath: str, selection : bool = False) -> Tuple[pd.DataFrame,
         with open("best_feat_list", "rb") as f:
             selected_features = pickle.load(f)
 
-        print("Feature dal PSO:")
-        print(selected_features)
+        if verbose :
+            print("Feature dal PSO:")
+            print(selected_features)
         features_ind = [ind for ind, val in enumerate(selected_features) if val == 1]
-        print("Indici:")
-        print(features_ind)
+        if verbose:
+            print("Indici:")
+            print(features_ind)
         features = features.iloc[:, features_ind]
         
         
-    
-    print("Feature selezionate:")
-    print(features)
+    if verbose:
+        print("Feature selezionate:")
+        print(features)
     classes = dataset.iloc[:, -1]
 
     # Missing values management: median substitution

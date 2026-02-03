@@ -16,6 +16,11 @@ import time
 
 from personal_lib.logger import *
 from personal_lib.utils import *
+import warnings
+
+
+warnings.filterwarnings("ignore")
+
 SEED = 42
 
 def train_mlp(X: pd.DataFrame, y: pd.Series,
@@ -79,7 +84,7 @@ def train_mlp_with_cv(
     compute_epoch_accuracy: bool = True,
     max_epochs: int = 200,
     epoch_mode: str = "first_run_first_fold",  # alternative: "first_run_all_folds", "all_runs_first_fold", "all"
-    mlp : MLPClassifier = None 
+    mlp : MLPClassifier = None
 ):
     """
     Cross-validation ripetuta (n_runs) con pipeline definita UNA volta.

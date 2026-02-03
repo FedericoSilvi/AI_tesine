@@ -7,7 +7,7 @@ from personal_lib.visualization import *
 from personal_lib.train import *
 from sklearn.exceptions import ConvergenceWarning
 
-warnings.filterwarnings("ignore", category=ConvergenceWarning)
+warnings.filterwarnings("ignore")
 
 
 
@@ -168,15 +168,22 @@ if __name__ == "__main__":
             print(f"Generate {len(mlp_configs)} combinazioni di MLP.")
             cv_logger, lc_results, epoch_results = main_phase_2(mlp_configs=mlp_configs, feature_selection=SELECTION)
 
-
-        with open(LOGGER_FILE, "wb") as f:
-            pickle.dump(cv_logger, f)
-        with open(MODEL_FILE, "wb") as f:
-            pickle.dump(final_model, f)
-        with open(LC_FILE, "wb") as f:
-            pickle.dump(lc_results, f)
-        with open(EPOCH_FILE, "wb") as f:
-            pickle.dump(epoch_results, f)
+        if EXPERIMENT == "default":
+            with open(LOGGER_FILE, "wb") as f:
+                pickle.dump(cv_logger, f)
+            with open(MODEL_FILE, "wb") as f:
+                pickle.dump(final_model, f)
+            with open(LC_FILE, "wb") as f:
+                pickle.dump(lc_results, f)
+            with open(EPOCH_FILE, "wb") as f:
+                pickle.dump(epoch_results, f)
+        else:
+            with open(LOGGER_FILE, "wb") as f:
+                pickle.dump(cv_logger, f)
+            with open(LC_FILE, "wb") as f:
+                pickle.dump(lc_results, f)
+            with open(EPOCH_FILE, "wb") as f:
+                pickle.dump(epoch_results, f)
        
         
     elif MODE == "plot":
