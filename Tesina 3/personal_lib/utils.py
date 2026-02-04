@@ -77,7 +77,9 @@ def get_mlp_config(scenario : str ="architecture",SEED : int =42):
                 mlp_configs[key] = MLPClassifier(
                     hidden_layer_sizes=arch,
                     activation=act,
-                    random_state=SEED
+                    random_state=SEED,
+                    warm_start=True,
+                    max_iter=1
                 )
 
     elif scenario =="learning_rate":
@@ -96,7 +98,9 @@ def get_mlp_config(scenario : str ="architecture",SEED : int =42):
                             learning_rate=policy,
                             solver=sol,
                             batch_size=size,
-                            random_state=SEED
+                            random_state=SEED,
+                            warm_start=True,
+                            max_iter=1
                         )
     elif scenario =="regulation":
         alphas = [0.0001, 0.001, 0.01, 0.1, 0.5]
@@ -111,6 +115,8 @@ def get_mlp_config(scenario : str ="architecture",SEED : int =42):
                         early_stopping=True,
                         alpha=alpha,
                         validation_fraction=val_frac,
-                        n_iter_no_change=iter_no_change
+                        n_iter_no_change=iter_no_change,
+                        warm_start=True,
+                        max_iter=1
                     )
     return mlp_configs
