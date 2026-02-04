@@ -1509,6 +1509,41 @@ def build_best_run_results_for_plot(runs: list):
 
     return aggregated_results
 
+def plot_exec_time (results : dict):
+    """
+    Grafica i tempi di esecuzione medi sulle 30 run per ogni configurazione
+    """
+    exec_time_per_conf = []
+    conf = []
+    
+    for config, runs in results.items():
+        exec_time_per_run = []    
+        conf.append(str(config))
+
+        for run in runs:
+            exec_time_per_run.append(run["execution_time"])
+        
+        exec_time_per_conf.append(np.mean(exec_time_per_run))
+
+    plt.figure(figsize=(10,6))
+    dynamic_font_size = max(6, min(12, 120 / len(conf)))
+    bars = plt.bar(conf,exec_time_per_conf, color='mediumseagreen', edgecolor='black')
+    plt.bar_label(bars,padding=3, fmt='%.2f', fontsize=dynamic_font_size, fontweight='bold')
+
+    plt.title("Tempo medio di esecuzione per configurazione", fontsize=14)
+    plt.xlabel("Configurazioni", fontsize=12)
+    plt.ylabel("Tempo di esecuzione (sec)", fontsize=12)
+
+    plt.xticks(rotation=45, ha="right")
+
+
+    plt.tight_layout()
+    plt.show()
+
+
+
+
+
 # =============================================================================
 # MAIN
 # =============================================================================
@@ -1613,6 +1648,7 @@ def main():
 
             # Aggregazione per swarm size
 
+            plot_exec_time(results)
             plot_fitness_boxplots(results)
 
             aggregated_by_swarm = {}
@@ -1664,7 +1700,7 @@ def main():
             # Aggregazione per swarm size
 
             
-
+            plot_exec_time(results)
             plot_fitness_boxplots(results)
             
             aggregated_by_coeff = {}
@@ -1740,6 +1776,7 @@ def main():
 
             # Aggregazione per swarm size
 
+            plot_exec_time(results)
             plot_fitness_boxplots(results)
 
             aggregated_by_stop = {}
@@ -1788,7 +1825,7 @@ if __name__ == "__main__":
     # ============================================================
 
     MODE = "plot"          # "run" | "plot"
-    EXPERIMENT = "coeff"   # "swarm" | "coeff" | "stop"
+    EXPERIMENT = "stop"   # "swarm" | "coeff" | "stop"
 
     N_RUNS = 30
     DATASET_PATH = "DARWIN.csv"
