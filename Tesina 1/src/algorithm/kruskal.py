@@ -79,8 +79,7 @@ class KruskalMST:
         edges: List[Tuple[float, int, int]] = [] # lista che conterrà gli archi definiti come tuple (peso, nodo1, nodo2)
 
         # assegna un peso a tutti gli archi, se esiste il campo weight mette quello altrimenti 1
-        for u, v, data in self.network.graph.edges(data=True): # (grazie gpitti) con data=True l'arco ha 3 elementi: (u,v,data) dove data è un dizionario di attributi dell'arco
-                                                               # in add_link dovrebbe esserci una roba tipo "weight": cost che viene messa nel data
+        for u, v, data in self.network.graph.edges(data=True):
         
             weight = data.get("weight", 1)
             edges.append((weight, u, v)) # aggiungi l'arco alla lista degli archi
