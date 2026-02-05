@@ -434,3 +434,55 @@ def plot_configs_exec_time(results : Dict, scenario ="_",save_path ="_exec_time"
     plt.show()
 
 
+def plot_cv_stability_comparison(results_y_true: Dict, results_y_pred: Dict, n_runs=30, scenario="_", save_path="comparison_stability"):
+    """
+    Confronta la stabilità di tutte le configurazioni in un unico grafico a barre raggruppate.
+    """
+    
+    def flatten(input_list):
+        flat = []
+        for item in input_list:
+            if isinstance(item, (pd.Series, np.ndarray)): flat.extend(item.tolist())
+            elif isinstance(item, list): flat.extend(item)
+            else: flat.append(item)
+        return np.array(flat)
+
+    # 1. Preparazione dati
+    bins = np.linspace(0, 1, 11)
+    bin_labels = [f"{bins[i]:.1f}-{bins[i+1]:.1f}" for i in range(len(bins)-1)]
+    
+    all_counts = {}
+    configs = list(results_y_true.keys())
+
+    for config in configs:
+        y_pred_all = flatten(results_y_pred[config])
+        n_samples_total = len(y_pred_all) // n_runs
+        preds_matrix = y_pred_all.reshape(n_runs, n_samples_total)
+        stability_mean = np.mean(preds_matrix, axis=0)
+        
+        counts, _ = np.histogram(stability_mean, bins=bins)
+        all_counts[config] = counts
+
+    # 2. Parametri del plot
+    x = np.arange(len(bin_labels))  # Posizioni dei bin
+    width = 0.8 / len(configs)       # Larghezza dinamica delle barre basata sul numero di config
+    
+    fig, ax = plt.subplots(figsize=(14, 8))
+
+    # 3. Creazione delle barre raggruppate
+    for i, config in enumerate(configs):
+        offset = (i - (len(configs) - 1) / 2) * width
+        ax.bar(x + offset, all_counts[config], width, label=config, edgecolor='black', alpha=0.8)
+
+    # 4. Formattazione
+    ax.set_title("Confronto Distribuzione Stabilità tra Configurazioni", fontsize=16, fontweight='bold')
+    ax.set_xlabel("Frequenza di predizione Classe '1' (0=Stabile 0, 1=Stabile 1)", fontsize=12)
+    ax.set_ylabel("Numero di Campioni", fontsize=12)
+    ax.set_xticks(x)
+    ax.set_xticklabels(bin_labels, rotation=45)
+    ax.legend(title="Configurazioni", bbox_to_anchor=(1.05, 1), loc='upper left')
+    ax.grid(axis='y', linestyle='--', alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig(f"Immagini/{scenario}/{save_path}.png", dpi=300)
+    plt.show()

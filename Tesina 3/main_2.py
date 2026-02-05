@@ -215,7 +215,18 @@ if __name__ == "__main__":
         else:
             
             top_n_config = get_top_n_config(cv_logger)
+            y_test={}
+            y_pred={}
+            y_proba={}
+
+            for config, cv_logger in top_n_config.items():
+                cv_summary = cv_logger.get_summary()
+                y_test[config]=cv_summary['y_true']
+                y_pred[config]= cv_summary['y_pred']
+                y_proba[config]= cv_summary['y_proba']
+
             print(top_n_config)
             plot_configs_box_plot(top_n_config,scenario=EXPERIMENT+WITH_SEL)
             plot_configs_exec_time(top_n_config,scenario=EXPERIMENT+WITH_SEL)
+            plot_cv_stability_comparison(y_test,y_pred, scenario=EXPERIMENT+WITH_SEL)
     
