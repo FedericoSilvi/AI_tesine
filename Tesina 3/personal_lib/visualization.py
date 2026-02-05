@@ -68,6 +68,11 @@ def plot_loss_convergence(logger,scenario = "_",save_path="_convergence_analysis
     plt.show()
 
 def plot_learning_curves(lc_results, scenario ="_", save_path="_darwin_learning_curves.png"):
+    """
+    Visualizza le curve di apprendimento 
+    """
+
+
     train_sizes = lc_results["train_sizes"]
     mean_train = lc_results["mean_train_score"]
     std_train  = lc_results["std_train_score"]
@@ -92,6 +97,9 @@ def plot_learning_curves(lc_results, scenario ="_", save_path="_darwin_learning_
     plt.show()
 
 def plot_epoch_accuracy(epoch_results, scenario ="_", save_path="_accuracy_per_epoch.png"):
+    """
+    Visualizza l'accuracy per epoca durante l'addestramento
+    """
     if epoch_results is None:
         print("epoch_results è None (compute_epoch_accuracy=False o nessuna curva calcolata).")
         return
@@ -233,6 +241,10 @@ def plot_cv_roc_curve(y_true_list, y_proba_list, scenario ="_",save_path="_roc_c
 
 
 def plot_accuracy_distribution(cv_logger, scenario ="_",save_path ="_accuracy_distribution",title="Distribuzione dell'Accuracy"):
+    """
+    Visualizza la distribuzione dell'accuracy durante la cross-validation
+    """
+
     scores = cv_logger.test_scores
     
     plt.figure(figsize=(8, 6))
@@ -255,6 +267,11 @@ def plot_accuracy_distribution(cv_logger, scenario ="_",save_path ="_accuracy_di
     plt.show()
 
 def plot_accuracy_boxplot(cv_logger, scenario ="_",save_path ="_accuracy_boxplot", title="Box Plot Accuracy"):
+
+    """
+    Grafica il box plot dell'accuracy della configurazione
+    """
+
     scores = cv_logger.test_scores
     
     plt.figure(figsize=(6, 6))
@@ -278,8 +295,10 @@ def plot_accuracy_boxplot(cv_logger, scenario ="_",save_path ="_accuracy_boxplot
 def plot_cv_prediction_stability(y_true_list, y_pred_list, n_runs=30, scenario ="_",save_path="_prediction_stability", title="Analisi Stabilità delle Predizioni (CV)"):
 
     """
-    y_true_list: lista di liste/array (tutti i fold di tutte le run)
-    y_pred_list: lista di liste/array (tutte le predizioni di tutte le run)
+    Grafica l'incertezza sulla classificazione dei campioni durante le run
+
+    y_true_list: fold di tutte le run
+    y_pred_list: predizioni di tutte le run
     n_runs: numero di run completate
     """
     
@@ -351,31 +370,94 @@ def plot_cv_prediction_stability(y_true_list, y_pred_list, n_runs=30, scenario =
     stable_mask = (stability_mean <= 0.1) | (stability_mean >= 0.9)
     print(f"Campioni con predizione stabile (>90% delle run): {np.sum(stable_mask)}/{n_samples_total}")
 
+
 #============ OTHER SCENARIOS PLOTS ============
 
-def plot_configs_box_plot(results : Dict,scenario ="_",save_path ="_accuracy_boxplot", title="Box Plot Accuracy per Configurazione"):
+import matplotlib.pyplot as plt
 
+def plot_configs_box_plot(results: Dict, scenario="_", save_path="_accuracy_boxplot", title="Box Plot Accuracy per Configurazione"):
+    """
+    Grafica i box plot dell'accuracy con uno spazio ogni 4 configurazioni
+    """
     configs = []
     test_scores = []
 
     for config, cv_logger in results.items():
-
         configs.append(config)
-        test_score = cv_logger.test_scores
-        test_scores.append(test_score)
+        test_scores.append(cv_logger.test_scores)
 
-    plt.figure(figsize=(12,6))
+    # Aggiunge uno spazio ogni 4 tick
+    positions = []
+    current_pos = 1  
+    for i in range(len(configs)):
+        # Ogni 4 elementi aggiunge uno spazio extra
+        if i > 0 and i % 4 == 0:
+            current_pos += 1
+        positions.append(current_pos)
+        current_pos += 1
+    
 
-    plt.boxplot(test_scores)
+    plt.figure(figsize=(12, 6))
 
-    plt.xticks(range(1,len(configs)+1), configs, rotation=45, ha='right')
+    # Usiamo il parametro 'positions' per dire a matplotlib dove disegnare i box
+    plt.boxplot(test_scores, positions=positions, patch_artist=True, 
+                boxprops=dict(facecolor='lightblue', color='blue'))
 
-    plt.title(title)
-    plt.xlabel('Configurazioni')
-    plt.ylabel('Accuracy')
+    # Allineiamo i tick alle nuove posizioni calcolate
+    plt.xticks(positions, configs, rotation=45, ha='right')
+
+    plt.title(title, fontsize=14)
+    plt.xlabel('Configurazioni', fontsize=12)
+    plt.ylabel('Accuracy', fontsize=12)
     plt.grid(axis='y', linestyle='--', alpha=0.7)
 
     plt.tight_layout() 
-    plt.savefig("Immagini/"+scenario+"/"+save_path, dpi=300)
+    plt.savefig("Immagini/" + scenario + "/" + save_path, dpi=300)
     plt.show()
+
+
+
+def plot_configs_exec_time(results: Dict, scenario="_", save_path="_exec_time", title="Tempi di Esecuzione per Configurazione"):
+    """
+    Grafica i tempi di esecuzione con uno spazio ogni 4 configurazioni.
+    """
+    exec_times = []
+    configs = []
+
+    for config, cv_logger in results.items():
+        configs.append(config)
+        summary = cv_logger.get_summary()
+        exec_times.append(summary['total_time'])
+
+    # Aggiunge uno spazio ogni 4 tick
+    indices = []
+    current_pos = 0
+    for i in range(len(configs)):
+        # Ogni 4 elementi aggiunge uno spazio extra
+        if i > 0 and i % 4 == 0:
+            current_pos += 1 
+        indices.append(current_pos)
+        current_pos += 1
+    # -----------------------------------
+
+    plt.figure(figsize=(12, 6)) 
+    
+    dynamic_font_size = max(6, min(12, 120 / len(configs)))
+    
+    # Usa 'indices' invece di 'configs' per posizionare le barre
+    bars = plt.bar(indices, exec_times, color='mediumseagreen', edgecolor='black', width=0.8)
+    
+    plt.bar_label(bars, padding=3, fmt='%.2f', fontsize=dynamic_font_size, fontweight='bold')
+
+    plt.title(title, fontsize=14)
+    plt.xlabel("Configurazioni", fontsize=12)
+    plt.ylabel("Tempo di esecuzione (sec)", fontsize=12)
+
+    # Imposta i tick nelle posizioni calcolate con i nomi delle configurazioni
+    plt.xticks(indices, configs, rotation=45, ha="right", fontsize=dynamic_font_size)
+
+    plt.tight_layout()
+    plt.savefig("Immagini/" + scenario + "/" + save_path, dpi=300)
+    plt.show()
+
 

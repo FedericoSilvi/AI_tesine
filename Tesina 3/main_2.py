@@ -215,4 +215,5 @@ if __name__ == "__main__":
         else:
 
             plot_configs_box_plot(cv_logger,scenario=EXPERIMENT+WITH_SEL)
+            plot_configs_exec_time(cv_logger,scenario=EXPERIMENT+WITH_SEL)
     
