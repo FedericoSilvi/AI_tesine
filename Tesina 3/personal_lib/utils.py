@@ -2,7 +2,7 @@ import pandas as pd
 import pickle
 import numpy as np
 
-from typing import Tuple
+from typing import Dict, Tuple
 
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import (accuracy_score, confusion_matrix, roc_auc_score)
@@ -120,3 +120,22 @@ def get_mlp_config(scenario : str ="architecture",SEED : int =42):
                         max_iter=1
                     )
     return mlp_configs
+
+def get_top_n_config (results : Dict, n : int = 10):
+
+    mean_acc = {}
+
+    for config, cv_logger in results.items():
+        summary=cv_logger.get_summary()
+        acc = summary['mean_test_acc']
+        mean_acc[config]=acc
+
+    top_n_acc = dict(sorted(mean_acc.items(), key=lambda item: item[1], reverse=True)[:n])
+
+    top_n_results = {config: results[config] for config in top_n_acc.keys()}
+    
+    return top_n_results
+    
+
+    
+   

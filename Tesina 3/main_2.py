@@ -213,7 +213,9 @@ if __name__ == "__main__":
             plot_cv_prediction_stability(y_test,y_pred,scenario=EXPERIMENT+WITH_SEL)
 
         else:
-
-            plot_configs_box_plot(cv_logger,scenario=EXPERIMENT+WITH_SEL)
-            plot_configs_exec_time(cv_logger,scenario=EXPERIMENT+WITH_SEL)
+            
+            top_n_config = get_top_n_config(cv_logger)
+            print(top_n_config)
+            plot_configs_box_plot(top_n_config,scenario=EXPERIMENT+WITH_SEL)
+            plot_configs_exec_time(top_n_config,scenario=EXPERIMENT+WITH_SEL)
     
