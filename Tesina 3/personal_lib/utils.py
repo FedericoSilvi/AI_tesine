@@ -136,6 +136,14 @@ def get_top_n_config (results : Dict, n : int = 10):
     
     return top_n_results
     
-
+def split_lr_cofigs (results : Dict):
+    """
+    Splitta le configurazioni dello scenario 'learning rate' dando i dizionari corrispondenti ai valori 
+    possibili dei leanrning rate iniziali
     
-   
+    """
+    dict_lr_1 = {k: v for k, v in results.items() if "lr_0.0001_" in k}
+    dict_lr_2 = {k: v for k, v in results.items() if "lr_0.001_" in k}
+    dict_lr_3 = {k: v for k, v in results.items() if "lr_0.01_" in k}
+    dict_lr_4 = {k: v for k, v in results.items() if "lr_0.1_" in k}
+    return dict_lr_1,dict_lr_2,dict_lr_3,dict_lr_4

@@ -222,8 +222,9 @@ if __name__ == "__main__":
             y_pred={}
             y_proba={}
 
-            for config, cv_logger in top_n_config.items():
-                cv_summary = cv_logger.get_summary()
+            for config, cv_log in top_n_config.items():
+                print(config)
+                cv_summary = cv_log.get_summary()
                 y_test[config]=cv_summary['y_true']
                 y_pred[config]= cv_summary['y_pred']
                 y_proba[config]= cv_summary['y_proba']
@@ -231,6 +232,19 @@ if __name__ == "__main__":
             top_epoch_results = {config: epoch_results[config] for config in top_n_config.keys() if config in epoch_results}
             top_lc_results ={config: lc_results[config] for config in top_n_config.keys() if config in lc_results}
 
+            if EXPERIMENT =="learning_rate":
+                res1,res2,res3,res4 = split_lr_cofigs(cv_logger)
+                plot_configs_box_plot_all(res1, scenario=EXPERIMENT+WITH_SEL, save_path="_accuracy_boxplot_1")
+                plot_configs_box_plot_all(res2, scenario=EXPERIMENT+WITH_SEL, save_path="_accuracy_boxplot_2")
+                plot_configs_box_plot_all(res3, scenario=EXPERIMENT+WITH_SEL, save_path="_accuracy_boxplot_3")
+                plot_configs_box_plot_all(res4, scenario=EXPERIMENT+WITH_SEL, save_path="_accuracy_boxplot_4")
+                plot_configs_exec_time_all(res1, scenario=EXPERIMENT+WITH_SEL, save_path="_exec_time_1")
+                plot_configs_exec_time_all(res2, scenario=EXPERIMENT+WITH_SEL, save_path="_exec_time_2")
+                plot_configs_exec_time_all(res3, scenario=EXPERIMENT+WITH_SEL, save_path="_exec_time_3")
+                plot_configs_exec_time_all(res4, scenario=EXPERIMENT+WITH_SEL, save_path="_exec_time_4")
+            else:
+                plot_configs_box_plot_all(cv_logger, scenario=EXPERIMENT+WITH_SEL)
+                plot_configs_exec_time_all(cv_logger, scenario=EXPERIMENT+WITH_SEL)
             plot_configs_box_plot(top_n_config,scenario=EXPERIMENT+WITH_SEL)
             plot_configs_exec_time(top_n_config,scenario=EXPERIMENT+WITH_SEL)
             plot_cv_stability_comparison(y_test,y_pred, scenario=EXPERIMENT+WITH_SEL)

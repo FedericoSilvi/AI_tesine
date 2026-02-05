@@ -372,11 +372,112 @@ def plot_cv_prediction_stability(y_true_list, y_pred_list, n_runs=30, scenario =
 
 
 #============ OTHER SCENARIOS PLOTS ============
+def plot_configs_box_plot_all(results: dict, scenario="_", save_path="_accuracy_boxplot_all", title="Box Plot Accuracy"):
+    print(scenario)
+    configs = []
+    test_scores = []
 
-def plot_configs_box_plot(results : Dict,scenario ="_",save_path ="_accuracy_boxplot", title="Box Plot Accuracy per Configurazione"):
+    for config, cv_logger in results.items():
+        configs.append(config)
+        test_scores.append(cv_logger.test_scores)
+
+    plt.figure(figsize=(14, 6)) 
+
+    # --- NUOVA LOGICA GAP DINAMICO ---
+    positions = []
+    current_pos = 1
+    
+    # Definiamo ogni quanto deve esserci un gap in base allo scenario
+    if scenario == "architecture_with_sel":
+        gap_every = 4
+    elif scenario == "regulation_with_sel":
+        gap_every = 3
+    elif scenario == "learning_rate_with_sel":
+        gap_every = 9
+    else:
+        gap_every = None  # Nessun gap
+
+    if gap_every:
+        for i in range(len(configs)):
+            positions.append(current_pos)
+            if (i + 1) % gap_every == 0:
+                current_pos += 2  
+            else:
+                current_pos += 1
+    else:
+        positions = range(1, len(configs) + 1)
+    # ---------------------------------
+
+    plt.boxplot(test_scores, positions=positions)
+
+    # Use the calculated positions for the x-ticks as well
+    plt.xticks(positions, configs, rotation=45, ha='right')
+
+    plt.title(title)
+    plt.xlabel('Configurazioni')
+    plt.ylabel('Accuracy')
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+    plt.tight_layout() 
+    plt.savefig(f"Immagini/{scenario}/{save_path}", dpi=300)
+    plt.show()
+
+def plot_configs_exec_time_all(results: dict, scenario="_", save_path="_exec_time_all", title="Tempi di Esecuzione"):
+    exec_times = []
+    configs = []
+
+    for config, cv_logger in results.items():
+        configs.append(config)
+        summary = cv_logger.get_summary()
+        exec_times.append(summary['total_time'])
+
+    plt.figure(figsize=(12, 6))
+
+    # --- NUOVA LOGICA GAP DINAMICO ---
+    positions = []
+    current_pos = 1
+    
+    # Definiamo ogni quanto deve esserci un gap in base allo scenario
+    if scenario == "architecture_with_sel":
+        gap_every = 4
+    elif scenario == "regulation_with_sel":
+        gap_every = 3
+    elif scenario == "learning_rate_with_sel":
+        gap_every = 9
+    else:
+        gap_every = None  # Nessun gap
+
+    if gap_every:
+        for i in range(len(configs)):
+            positions.append(current_pos)
+            if (i + 1) % gap_every == 0:
+                current_pos += 2  
+            else:
+                current_pos += 1
+    else:
+        positions = range(1, len(configs) + 1)
+    # ---------------------------------
+
+    bars = plt.bar(positions, exec_times, color='mediumseagreen', edgecolor='black')
+    
+    dynamic_font_size = max(5, min(12, 120 / len(configs)))
+    plt.bar_label(bars, padding=3, fmt='%.2f', fontsize=dynamic_font_size, fontweight='bold')
+
+    plt.title(title, fontsize=14)
+    plt.xlabel("Configurazioni", fontsize=12)
+    plt.ylabel("Tempo di esecuzione (sec)", fontsize=12)
+
+    plt.xticks(positions, configs, rotation=45, ha="right", fontsize=8)
+
+    plt.tight_layout()
+    plt.savefig(f"Immagini/{scenario}/{save_path}", dpi=300)
+    plt.show()
+
+def plot_configs_box_plot(results : Dict,scenario ="_",save_path ="_accuracy_boxplot", title="Box Plot Accuracy (Top 10 Configurazioni)"):
     """
     Grafica i box plot dell'accuracy di ogni configurazione
     """
+    print(scenario)
     configs = []
     test_scores = []
 
@@ -401,7 +502,7 @@ def plot_configs_box_plot(results : Dict,scenario ="_",save_path ="_accuracy_box
     plt.savefig("Immagini/"+scenario+"/"+save_path, dpi=300)
     plt.show()
 
-def plot_configs_exec_time(results : Dict, scenario ="_",save_path ="_exec_time",title ="Tempi di Esecuzione pe Configurazione"):
+def plot_configs_exec_time(results : Dict, scenario ="_",save_path ="_exec_time",title ="Tempi di Esecuzione (Top 10 Configurazioni)"):
     """
     Grafica i tempi di esecuzione di ogni configurazione
     """
@@ -474,7 +575,7 @@ def plot_cv_stability_comparison(results_y_true: Dict, results_y_pred: Dict, n_r
         ax.bar(x + offset, all_counts[config], width, label=config, edgecolor='black', alpha=0.8)
 
     # 4. Formattazione
-    ax.set_title("Confronto Distribuzione Stabilità tra Configurazioni", fontsize=16, fontweight='bold')
+    ax.set_title("Confronto Distribuzione Stabilità (Top 10 Configurazioni)", fontsize=16, fontweight='bold')
     ax.set_xlabel("Frequenza di predizione Classe '1' (0=Stabile 0, 1=Stabile 1)", fontsize=12)
     ax.set_ylabel("Numero di Campioni", fontsize=12)
     ax.set_xticks(x)
@@ -488,7 +589,7 @@ def plot_cv_stability_comparison(results_y_true: Dict, results_y_pred: Dict, n_r
 
 
 
-def plot_config_roc_curves(results: Dict, scenario="_",save_path ="_roc_curves", title="Confronto Curve ROC (Top 10)"):
+def plot_config_roc_curves(results: Dict, scenario="_",save_path ="_roc_curves", title="Confronto Curve ROC (Top 10 Configurazioni)"):
     """
     Curve ROC delle TOP 10 configurazioni per mean_test_acc,
     con evidenziazione del punto più vicino a (0,1)
@@ -616,7 +717,7 @@ def plot_config_loss_convergence(results_dict: Dict, scenario="_", save_path="_c
                          color=color, alpha=0.1)
 
     # 3. Formattazione Grafico
-    plt.title("Confronto Convergenza Loss tra Configurazioni", fontsize=15, fontweight='bold')
+    plt.title("Confronto Convergenza Loss (Top 10 Configurazioni)", fontsize=15, fontweight='bold')
     plt.xlabel("Iterazioni (Epoche)", fontsize=12)
     plt.ylabel("Valore Loss", fontsize=12)
     
@@ -660,7 +761,7 @@ def plot_config_epoch_accuracy(epoch_res, scenario="_", save_path="_accuracy_com
         ax2.plot(e, sv, label=config_name, color=color, linewidth=2.5)
 
     # Configurazione Grafico Media
-    ax1.set_title("Media Accuracy di Validazione", fontsize=14, fontweight='bold')
+    ax1.set_title("Media Accuracy di Validazione (Top 10 Configurazioni)", fontsize=14, fontweight='bold')
     ax1.set_xlabel("Epoche", fontsize=12)
     ax1.set_ylabel("Mean Accuracy", fontsize=12)
     ax1.grid(True, linestyle="--", alpha=0.4)
@@ -669,7 +770,7 @@ def plot_config_epoch_accuracy(epoch_res, scenario="_", save_path="_accuracy_com
     ax1.legend(fontsize=9, loc='best') # Legenda interna al primo grafico
 
     # Configurazione Grafico Deviazione
-    ax2.set_title("Incertezza (Deviazione Standard)", fontsize=14, fontweight='bold')
+    ax2.set_title("Incertezza (Deviazione Standard) (Top 10 Configurazioni)", fontsize=14, fontweight='bold')
     ax2.set_xlabel("Epoche", fontsize=12)
     ax2.set_ylabel("Std Dev", fontsize=12)
     ax2.grid(True, linestyle="--", alpha=0.4)
