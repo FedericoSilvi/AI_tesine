@@ -129,7 +129,7 @@ def main_phase_2(mlp_configs : Dict, feature_selection : bool = False, filepath 
 if __name__ == "__main__":
 
     MODE = "plot"              # train, plot
-    EXPERIMENT = "architecture"      # default, architecture, learning_rate, regulation
+    EXPERIMENT = "learning_rate"      # default, architecture, learning_rate, regulation
     SELECTION = True           # False (no selezione), True (selezione)
 
     LOGGER_FILE = "pickles/"+EXPERIMENT+"_cv_logger"
@@ -196,6 +196,9 @@ if __name__ == "__main__":
             epoch_results = pickle.load(f)
        
         if EXPERIMENT == "default":
+            with open(MODEL_FILE, "rb") as f:
+                model = pickle.load(f)
+            print(model.named_steps["mlp"])
             cv_summary = cv_logger.get_summary()
             y_test = cv_summary['y_true']
             y_pred = cv_summary['y_pred']
@@ -227,7 +230,7 @@ if __name__ == "__main__":
 
             top_epoch_results = {config: epoch_results[config] for config in top_n_config.keys() if config in epoch_results}
             top_lc_results ={config: lc_results[config] for config in top_n_config.keys() if config in lc_results}
-            
+
             plot_configs_box_plot(top_n_config,scenario=EXPERIMENT+WITH_SEL)
             plot_configs_exec_time(top_n_config,scenario=EXPERIMENT+WITH_SEL)
             plot_cv_stability_comparison(y_test,y_pred, scenario=EXPERIMENT+WITH_SEL)
