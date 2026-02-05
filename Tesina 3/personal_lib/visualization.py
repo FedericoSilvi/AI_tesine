@@ -1,4 +1,5 @@
 
+from typing import Dict
 import pandas as pd
 
 
@@ -9,7 +10,7 @@ from scipy.stats import gaussian_kde
 from sklearn.metrics import (confusion_matrix, roc_curve,auc)
 
 
-
+#============ DEFAULT SCENARIO PLOTS ============
 def plot_loss_convergence(logger,scenario = "_",save_path="_convergence_analysis.png"):
     """
     Visualizza tutte le curve di loss salvate nel logger.
@@ -265,9 +266,8 @@ def plot_accuracy_boxplot(cv_logger, scenario ="_",save_path ="_accuracy_boxplot
     
     plt.title(title, fontsize=14, fontweight='bold')
     
-    # FIX: Usiamo plt.xticks() invece di plt.xticklabels()
-    # Il primo argomento è la posizione [1], il secondo è la label
-    plt.xticks([1], ["Validation Score"])
+    
+    plt.xticks([1], ["Configurazione di Default"])
     
     plt.ylabel("Accuracy")
     plt.grid(axis='y', linestyle='--', alpha=0.6)
@@ -276,6 +276,7 @@ def plot_accuracy_boxplot(cv_logger, scenario ="_",save_path ="_accuracy_boxplot
     plt.show()
 
 def plot_cv_prediction_stability(y_true_list, y_pred_list, n_runs=30, scenario ="_",save_path="_prediction_stability", title="Analisi Stabilità delle Predizioni (CV)"):
+
     """
     y_true_list: lista di liste/array (tutti i fold di tutte le run)
     y_pred_list: lista di liste/array (tutte le predizioni di tutte le run)
@@ -349,3 +350,32 @@ def plot_cv_prediction_stability(y_true_list, y_pred_list, n_runs=30, scenario =
     # Metriche sintetiche
     stable_mask = (stability_mean <= 0.1) | (stability_mean >= 0.9)
     print(f"Campioni con predizione stabile (>90% delle run): {np.sum(stable_mask)}/{n_samples_total}")
+
+#============ OTHER SCENARIOS PLOTS ============
+
+def plot_configs_box_plot(results : Dict,scenario ="_",save_path ="_accuracy_boxplot", title="Box Plot Accuracy per Configurazione"):
+
+    configs = []
+    test_scores = []
+
+    for config, cv_logger in results.items():
+
+        configs.append(config)
+        test_score = cv_logger.test_scores
+        test_scores.append(test_score)
+
+    plt.figure(figsize=(12,6))
+
+    plt.boxplot(test_scores)
+
+    plt.xticks(range(1,len(configs)+1), configs, rotation=45, ha='right')
+
+    plt.title(title)
+    plt.xlabel('Configurazioni')
+    plt.ylabel('Accuracy')
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+    plt.tight_layout() 
+    plt.savefig("Immagini/"+scenario+"/"+save_path, dpi=300)
+    plt.show()
+
