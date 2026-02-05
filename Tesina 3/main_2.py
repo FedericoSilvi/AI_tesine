@@ -225,8 +225,12 @@ if __name__ == "__main__":
                 y_pred[config]= cv_summary['y_pred']
                 y_proba[config]= cv_summary['y_proba']
 
-            print(top_n_config)
+            top_epoch_results = {config: epoch_results[config] for config in top_n_config.keys() if config in epoch_results}
+            top_lc_results ={config: lc_results[config] for config in top_n_config.keys() if config in lc_results}
+            
             plot_configs_box_plot(top_n_config,scenario=EXPERIMENT+WITH_SEL)
             plot_configs_exec_time(top_n_config,scenario=EXPERIMENT+WITH_SEL)
             plot_cv_stability_comparison(y_test,y_pred, scenario=EXPERIMENT+WITH_SEL)
-    
+            plot_config_roc_curves(top_n_config, scenario=EXPERIMENT+WITH_SEL)    
+            plot_config_loss_convergence(top_n_config,scenario=EXPERIMENT+WITH_SEL)
+            plot_config_epoch_accuracy(top_epoch_results,scenario=EXPERIMENT+WITH_SEL)

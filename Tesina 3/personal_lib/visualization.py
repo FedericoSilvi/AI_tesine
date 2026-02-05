@@ -433,7 +433,6 @@ def plot_configs_exec_time(results : Dict, scenario ="_",save_path ="_exec_time"
     plt.savefig("Immagini/"+scenario+"/"+save_path, dpi=300)
     plt.show()
 
-
 def plot_cv_stability_comparison(results_y_true: Dict, results_y_pred: Dict, n_runs=30, scenario="_", save_path="comparison_stability"):
     """
     Confronta la stabilità di tutte le configurazioni in un unico grafico a barre raggruppate.
@@ -485,4 +484,246 @@ def plot_cv_stability_comparison(results_y_true: Dict, results_y_pred: Dict, n_r
 
     plt.tight_layout()
     plt.savefig(f"Immagini/{scenario}/{save_path}.png", dpi=300)
+    plt.show()
+
+
+
+def plot_config_roc_curves(results: Dict, scenario="_",save_path ="_roc_curves", title="Confronto Curve ROC (Top 10)"):
+    """
+    Curve ROC delle TOP 10 configurazioni per mean_test_acc,
+    con evidenziazione del punto più vicino a (0,1)
+    e colorazione basata sull'accuracy media.
+    
+    """
+
+    
+
+    accs = np.array([cv.get_summary()['mean_test_acc'] for _, cv in results.items()])
+    acc_min, acc_max = accs.min(), accs.max()
+
+    def normalize(acc):
+        return (acc - acc_min) / (acc_max - acc_min + 1e-8)
+
+    cmap = plt.cm.viridis
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+
+    for i, (config_name, cv_logger) in enumerate(results.items()):
+        summary = cv_logger.get_summary()
+
+        y_true_all = np.concatenate(summary['y_true'])
+        y_proba_all = np.concatenate(summary['y_proba'])
+
+        y_score = y_proba_all[:, 1] if y_proba_all.ndim == 2 else y_proba_all
+
+        fpr, tpr, _ = roc_curve(y_true_all, y_score)
+        roc_auc = auc(fpr, tpr)
+
+        # punto più vicino a (0,1)
+        distances = np.sqrt((1 - tpr)**2 + fpr**2)
+        best_idx = np.argmin(distances)
+
+        # colore basato su accuracy
+        acc = summary['mean_test_acc']
+        color = cmap(normalize(acc))
+
+        # curva ROC
+        plt.plot(
+            fpr, tpr,
+            color=color,
+            lw=2.5,
+            alpha=0.9,
+            label=f'{config_name} '
+                  f'(Acc={acc:.3f}, AUC={roc_auc:.3f})'
+        )
+
+        plt.scatter(
+            fpr[best_idx], tpr[best_idx],
+            color=color,
+            edgecolor='black',
+            s=60,
+            zorder=5
+        )
+
+
+    plt.plot([0, 1], [0, 1],
+             linestyle='--',
+             color='gray',
+             lw=2,
+             alpha=0.6,
+             label='Random')
+
+
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.0])
+    plt.xlabel('False Positive Rate', fontsize=12)
+    plt.ylabel('True Positive Rate', fontsize=12)
+    plt.title(title, fontsize=14, fontweight='bold')
+    plt.legend(loc="lower right", fontsize=9)
+    plt.grid(alpha=0.4, linestyle='--')
+
+    # Colorbar (accuracy)
+    sm = plt.cm.ScalarMappable(
+        cmap=cmap,
+        norm=plt.Normalize(vmin=acc_min, vmax=acc_max)
+    )
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=ax, pad=0.02)
+    cbar.set_label('Mean Test Accuracy', fontsize=11)
+
+    plt.tight_layout()
+    plt.savefig(f"Immagini/{scenario}/{save_path}.png", dpi=300)
+
+    plt.show()  
+
+
+def plot_config_loss_convergence(results_dict: Dict, scenario="_", save_path="_convergence_comparison.png"):
+    """
+    Visualizza il confronto delle curve di loss media tra diverse configurazioni.
+    """
+    if not results_dict:
+        print("Dizionario dei risultati vuoto.")
+        return
+
+    plt.figure(figsize=(12, 7))
+    
+    # Palette di colori per distinguere le configurazioni
+    colors = plt.cm.tab10(np.linspace(0, 1, len(results_dict)))
+
+    for (config_name, logger), color in zip(results_dict.items(), colors):
+        curves = logger.loss_curves
+        if not curves:
+            continue
+
+        # 1. Calcolo della curva MEDIA (gestendo lunghezze diverse con NaN)
+        max_len = max(len(c) for c in curves)
+        curves_matrix = np.full((len(curves), max_len), np.nan)
+        for i, curve in enumerate(curves):
+            curves_matrix[i, :len(curve)] = curve
+        
+        mean_curve = np.nanmean(curves_matrix, axis=0)
+
+        # 2. Plot delle singole run (molto trasparenti per non disturbare)
+        # Mostriamo le singole curve solo per dare l'idea della varianza
+        plt.plot(mean_curve, color=color, linewidth=3, label=f'Media: {config_name}', zorder=3)
+        
+        # Opzionale: area di deviazione standard invece di mille linee (più pulito)
+        std_curve = np.nanstd(curves_matrix, axis=0)
+        plt.fill_between(range(max_len), 
+                         mean_curve - std_curve, 
+                         mean_curve + std_curve, 
+                         color=color, alpha=0.1)
+
+    # 3. Formattazione Grafico
+    plt.title("Confronto Convergenza Loss tra Configurazioni", fontsize=15, fontweight='bold')
+    plt.xlabel("Iterazioni (Epoche)", fontsize=12)
+    plt.ylabel("Valore Loss", fontsize=12)
+    
+    # Posizioniamo la legenda fuori se sono molte configurazioni
+    plt.legend(loc='upper left', bbox_to_anchor=(1, 1), fontsize=10)
+    plt.grid(True, linestyle='--', alpha=0.4)
+
+    plt.tight_layout()
+    plt.savefig(f"Immagini/{scenario}/{save_path}", dpi=300, bbox_inches='tight')
+    plt.show()
+
+
+def plot_config_epoch_accuracy(epoch_res, scenario="_", save_path="_accuracy_comparison.png"):
+    """
+    Confronta media e deviazione standard su due grafici affiancati con legende indipendenti.
+    L'asse Y della media si adatta automaticamente al valore minimo.
+    """
+    if not epoch_res:
+        print("Dizionario epoch_results vuoto.")
+        return
+
+    # Creazione della figura con due subplot
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 7))
+    
+    # Utilizzo della colormap tab10
+    colors = plt.cm.get_cmap('tab10', len(epoch_res))
+
+    for i, (config_name, epoch_data) in enumerate(epoch_res.items()):
+        if epoch_data is None:
+            continue
+
+        e = epoch_data["epochs"]
+        mv = epoch_data["mean_val_acc"]
+        sv = epoch_data["std_val_acc"]
+        color = colors(i)
+
+        # --- GRAFICO 1: MEDIA ---
+        ax1.plot(e, mv, label=config_name, color=color, linewidth=2.5)
+        
+        # --- GRAFICO 2: DEVIAZIONE STANDARD ---
+        ax2.plot(e, sv, label=config_name, color=color, linewidth=2.5)
+
+    # Configurazione Grafico Media
+    ax1.set_title("Media Accuracy di Validazione", fontsize=14, fontweight='bold')
+    ax1.set_xlabel("Epoche", fontsize=12)
+    ax1.set_ylabel("Mean Accuracy", fontsize=12)
+    ax1.grid(True, linestyle="--", alpha=0.4)
+    # Autoscale del minimo, tetto fissato a 1.0 (con un piccolo margine)
+    ax1.set_ylim(bottom=None, top=1.02) 
+    ax1.legend(fontsize=9, loc='best') # Legenda interna al primo grafico
+
+    # Configurazione Grafico Deviazione
+    ax2.set_title("Incertezza (Deviazione Standard)", fontsize=14, fontweight='bold')
+    ax2.set_xlabel("Epoche", fontsize=12)
+    ax2.set_ylabel("Std Dev", fontsize=12)
+    ax2.grid(True, linestyle="--", alpha=0.4)
+    ax2.legend(fontsize=9, loc='best') # Legenda interna al secondo grafico
+
+    plt.tight_layout()
+    plt.savefig(f"Immagini/{scenario}/{save_path}", dpi=300)
+    plt.show()
+
+
+def plot_config_learning_curves(lc_results_dict, scenario="_", save_path="_learning_curves_grid.png"):
+    """
+    Crea una griglia di Learning Curves, una per ogni configurazione nel dizionario.
+    """
+    if not lc_results_dict:
+        print("Dizionario lc_results vuoto.")
+        return
+
+    n_configs = len(lc_results_dict)
+    # Calcoliamo righe e colonne per la griglia (es. con 4 config facciamo 2x2)
+    cols = 2
+    rows = (n_configs + 1) // cols
+
+    fig, axes = plt.subplots(rows, cols, figsize=(15, 5 * rows), squeeze=False)
+    axes = axes.flatten()
+
+    for i, (config_name, results) in enumerate(lc_results_dict.items()):
+        ax = axes[i]
+        
+        train_sizes = results["train_sizes"]
+        mean_train = results["mean_train_score"]
+        std_train  = results["std_train_score"]
+        mean_val   = results["mean_val_score"]
+        std_val    = results["std_val_score"]
+
+        # Plot Train
+        ax.plot(train_sizes, mean_train, marker="o", label="Train score", color="#1f77b4")
+        ax.fill_between(train_sizes, mean_train - std_train, mean_train + std_train, alpha=0.15, color="#1f77b4")
+
+        # Plot Validation
+        ax.plot(train_sizes, mean_val, marker="o", label="Validation score", color="#ff7f0e")
+        ax.fill_between(train_sizes, mean_val - std_val, mean_val + std_val, alpha=0.15, color="#ff7f0e")
+
+        ax.set_title(f"Config: {config_name}", fontsize=12, fontweight='bold')
+        ax.set_xlabel("Esempi di training")
+        ax.set_ylabel("Accuracy")
+        ax.set_ylim(bottom=None, top=1.02) # Autoscale del minimo per vedere meglio i trend
+        ax.grid(True, linestyle="--", alpha=0.4)
+        ax.legend(loc="lower right", fontsize=9)
+
+    # Rimuoviamo eventuali subplot vuoti se n_configs è dispari
+    for j in range(i + 1, len(axes)):
+        fig.delaxes(axes[j])
+
+    plt.tight_layout()
+    plt.savefig(f"Immagini/{scenario}/{save_path}", dpi=300, bbox_inches='tight')
     plt.show()
