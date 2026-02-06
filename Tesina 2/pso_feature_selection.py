@@ -454,11 +454,11 @@ class ParticleSwarmOptimization:
 
     def calculate_swarm_dispersion(self, swarm: List[Particle]) -> float:
         """
-        Calcola la dispersione dello sciame.
+        Calcola la dispersione dello sciame basata sulla distanza di Hamming.
 
-        La dispersione misura quanto le particelle sono distribuite
-        nello spazio delle soluzioni ed è calcolata come la distanza
-        media delle particelle dal centroide dello sciame.
+        La dispersione misura il grado di diversità genetica o strutturale tra 
+        le particelle. Viene calcolata come la media delle distanze di Hamming 
+        tra tutte le possibili coppie di particelle nello sciame:
         """
 
         # TODO: Implementare - DONE
@@ -1738,7 +1738,11 @@ def main():
             for stop, runs in results.items():
                 aggregated = build_best_run_results_for_plot(runs)
                 aggregated_by_stop[stop] = aggregated
-                """ 
+                plot_convergence_curves(
+                    aggregated,
+                    title=f"Convergence Curve (Best of {N_RUNS} runs) - Coefficients {stop}"
+                )
+                """
                 plot_runs_with_statistics(
                     runs,
                     title=f"Convergence Statistics ({N_RUNS} runs) - Stop Criteria {stop}"
