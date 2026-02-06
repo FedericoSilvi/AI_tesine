@@ -70,7 +70,7 @@ class Particle:
     HINT:
     - Posizione binaria: 1 = feature selezionata, 0 = feature non selezionata
     - Velocità: valori continui che influenzano la probabilità di selezione
-    - Considerate la funzione sigmoid per convertire velocità in probabilità
+    - Considerate la funzione sigmoid per convertire velocità in probabilità (cambiata in v function)
     """
 
     def __init__(self, n_features: int, position: np.ndarray = None):
@@ -563,7 +563,7 @@ def run_experiment_swarm_size(X: pd.DataFrame, y: pd.Series,
     results = {}
 
     # File di output
-    output_file = "experiment_swarm_size.txt"
+    output_file = "experiment_swarm_size_seed.txt"
 
     # Calcolo correlazioni
     y_numeric = y
@@ -594,7 +594,8 @@ def run_experiment_swarm_size(X: pd.DataFrame, y: pd.Series,
 
                 pso = ParticleSwarmOptimization(
                     swarm_size=swarm_size,
-                    max_iterations=100
+                    max_iterations=100,
+                    random_seed=SEED+run_idx
                 )
 
                 result = pso.run(
@@ -685,7 +686,7 @@ def run_experiment_pso_coefficients(X: pd.DataFrame, y: pd.Series,
         print(f"{i:02d}: Inertia={comb[0]}, Cognitive coefficient={comb[1]}, Social coefficient={comb[2]}")
 
     results = {}
-    output_file = f"experiment_coefficients_section_{section_id}.txt"
+    output_file = f"experiment_coefficients_section_{section_id}_seed.txt"
 
     # Correlazioni per fitness
     y_numeric = y
@@ -716,7 +717,8 @@ def run_experiment_pso_coefficients(X: pd.DataFrame, y: pd.Series,
                     swarm_size=100,
                     w=inertia,
                     c1=c1,
-                    c2=c2
+                    c2=c2,
+                    random_seed=SEED+run_idx
                 )
 
                 result = pso.run(
@@ -802,7 +804,7 @@ def run_experiment_stopping_criteria(X: pd.DataFrame, y: pd.Series,
         print(f"{i:02d}: MaxIter={comb[0]}, Threshold={comb[1]}, Tol={comb[2]}")
 
     results = {}
-    output_file = f"experiment_stopping_criteria_section_{section_id}.txt"
+    output_file = f"experiment_stopping_criteria_section_{section_id}_seed.txt"
 
     # Correlazioni per fitness
     y_numeric = y
@@ -834,7 +836,8 @@ def run_experiment_stopping_criteria(X: pd.DataFrame, y: pd.Series,
                     swarm_size=100,
                     max_iterations=max_iter,
                     convergence_threshold=threshold,
-                    convergence_tolerance=tol
+                    convergence_tolerance=tol,
+                    random_seed=SEED+run_idx
                 )
 
                 result = pso.run(
@@ -942,42 +945,121 @@ def plot_convergence_curves(results: Dict, title: str = "Convergence Curves"):
 
     plt.show()
 
+def plot_runs_with_statistics(runs: list, title: str = "Convergence with Statistics"):
+    """
+    Versione avanzata: mostra tutte le run + statistiche aggregate.
+    
+    - Linee verdi trasparenti: run normali
+    - Linea ROSSA spessa: run con la migliore fitness finale
+    - Linea spessa blu: media delle run
+    - Area azzurra: deviazione standard tra le run
+    """
+    
+    fig, ax = plt.subplots(figsize=(14, 7))
+    
+    # 1. Trova la run migliore
+    best_run_idx = max(range(len(runs)), key=lambda i: runs[i]["best_fitness"])
+    global_best = runs[best_run_idx]["best_fitness"]
+    
+    print(f"Run migliore: #{best_run_idx + 1} con fitness = {global_best:.6f}")
+    
+    # 2. Plot delle singole run
+    max_iter = 0
+    all_gbest = []
+    
+    for idx, run in enumerate(runs):
+        logger = run["logger"]
+        iters = np.array([it["iteration"] for it in logger.iterations_data])
+        gbest_fitness = np.array([it["gbest_fitness"] for it in logger.iterations_data])
+        
+        max_iter = max(max_iter, len(iters))
+        all_gbest.append(gbest_fitness)
+        
+        if idx == best_run_idx:
+            # Run migliore in ROSSO ACCESO
+            ax.plot(iters, gbest_fitness, color='red', linewidth=2.5, 
+                    alpha=0.9, label=f'Best Run (#{idx+1})', zorder=5)
+        else:
+            # Altre run in VERDE trasparente
+            ax.plot(iters, gbest_fitness, color='green', linewidth=0.8, 
+                    alpha=0.25, zorder=1)
+    
+    # 3. Calcolo statistiche aggregate
+    max_len = max(len(g) for g in all_gbest)
+    padded_gbest = []
+    
+    for gbest in all_gbest:
+        if len(gbest) < max_len:
+            padded = np.pad(gbest, (0, max_len - len(gbest)), mode='edge')
+        else:
+            padded = gbest
+        padded_gbest.append(padded)
+    
+    gbest_array = np.array(padded_gbest)
+    mean_gbest = np.mean(gbest_array, axis=0)
+    std_gbest = np.std(gbest_array, axis=0)
+    
+    iters = np.arange(max_len)
+    
+    # 4. Plot media e deviazione standard
+    ax.plot(iters, mean_gbest, color='blue', linewidth=2.5, 
+            label='Mean GBest', zorder=3, linestyle='--')
+    ax.fill_between(iters, mean_gbest - std_gbest, mean_gbest + std_gbest,
+                    color='blue', alpha=0.15, label='± Std Dev', zorder=2)
+    
+    # 5. Linea orizzontale del miglior valore
+    ax.axhline(global_best, color='darkred', linestyle=':', linewidth=2, 
+               label=f'Best Fitness: {global_best:.6f}', zorder=4, alpha=0.7)
+    
+    ax.set_xlabel('Iteration', fontsize=12)
+    ax.set_ylabel('Fitness', fontsize=12)
+    ax.set_title(title, fontsize=14)
+    ax.set_xlim(0, max_iter)
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc='lower right', fontsize=10)
+    
+    plt.tight_layout()
+    plt.show()
 
 def plot_fitness_boxplots(results: Dict, title: str = "Fitness Distribution"):
     """
     Genera box plot delle distribuzioni fitness.
-
     HINT: Un boxplot per ogni configurazione testata
     """
-    # TODO: Implementare
-
     # Estrazione delle configurazioni 
     configurations = sorted(results.keys())
     data_to_plot = []
-
-    # Estrazione degli estremi della fitness per ogni configurazione 
+    
+    # Estrazione della best fitness finale per ogni run
     for configuration in configurations:
-        runs  = results[configuration]
-        gbest_values = []
-
+        runs = results[configuration]
+        final_fitness_values = []
+        
         for run in runs:
             logger = run["logger"]
-            gbest_iter = [it["gbest_fitness"] for it in logger.iterations_data]
-
-            gbest_values.append(min(gbest_iter))
-            gbest_values.append(max(gbest_iter))
-
-        data_to_plot.append(gbest_values)
-
+            # Prendi l'ultima iterazione (fitness finale)
+            if logger.iterations_data:
+                final_gbest = logger.iterations_data[-1]["gbest_fitness"]
+                final_fitness_values.append(final_gbest)
+        
+        data_to_plot.append(final_fitness_values)
+    
     # Plotting
     labels = [str(cfg) for cfg in configurations]
     plt.figure(figsize=(15, 6))
-    plt.boxplot(data_to_plot, tick_labels=labels, patch_artist=True)
+    
+    bp = plt.boxplot(data_to_plot, tick_labels=labels, patch_artist=True)
+    
+    # Colorazione dei box per migliore visualizzazione
+    for patch in bp['boxes']:
+        patch.set_facecolor('lightblue')
+        patch.set_alpha(0.7)
+    
     plt.xticks(rotation=45, ha="right")
     plt.xlabel("Configurazione parametri")
-    plt.ylabel("GBest Fitness (min e max per run)")
+    plt.ylabel("Best Fitness finale")
     plt.title(title)
-    plt.grid(True, alpha=0.3)
+    plt.grid(True, alpha=0.3, axis='y')
     plt.tight_layout()
     plt.show()
 
@@ -1175,7 +1257,7 @@ def plot_all_coeff_variations(aggregated_results_by_swarm: dict,
     elif index_coeff ==3:
         if_cond[2]=[1.0,1.5,2.0,2.5]
 
-    # Deault: (0.7,2.0,2.0)
+    # Default: (0.7,2.0,2.0)
     for coeff, results in aggregated_results_by_swarm.items():
        if (
                 coeff[0] in if_cond[0] and
@@ -1218,7 +1300,7 @@ def plot_all_coeff_variations(aggregated_results_by_swarm: dict,
 
     ax1.set_xlabel("Iteration")
     ax1.set_ylabel("Dispersion")
-    ax1.set_title("Swarm Behaviour - Dispersion")
+    ax1.set_title(title+ "Dispersion")
 
     ax1.legend(loc="center right")
 
@@ -1228,7 +1310,7 @@ def plot_all_coeff_variations(aggregated_results_by_swarm: dict,
 
     ax2.set_xlabel("Iteration")
     ax2.set_ylabel("Swarm Behaviour - Global Fitness")
-    ax2.set_title(title)
+    ax2.set_title(title+"Global Fitness")
 
     ax2.legend(loc="lower right")
 
@@ -1239,7 +1321,7 @@ def plot_all_coeff_variations(aggregated_results_by_swarm: dict,
 
     ax3.set_xlabel("Iteration")
     ax3.set_ylabel("Swarm Behaviour - Average Velocity")
-    ax3.set_title(title)
+    ax3.set_title(title+"Average Velocity")
 
     ax3.legend(loc="lower right")
 
@@ -1411,56 +1493,60 @@ def build_aggregated_results_for_plot(runs: list):
 
     return aggregated_results
 
+def build_best_run_results_for_plot(runs: list):
+    """
+    Costruisce un dizionario 'results' estraendo i dati della 
+    migliore run (quella con gbest_fitness/best_fitness più alto).
+    """
+
+   
+    best_run = max(runs, key=lambda x: x["best_fitness"])
+    
+    aggregated_results = {
+        "logger": deepcopy(best_run["logger"]),
+        "best_fitness": best_run["best_fitness"]
+    }
+
+    return aggregated_results
+
+def plot_exec_time (results : dict):
+    """
+    Grafica i tempi di esecuzione medi sulle 30 run per ogni configurazione
+    """
+    exec_time_per_conf = []
+    conf = []
+    
+    for config, runs in results.items():
+        exec_time_per_run = []    
+        conf.append(str(config))
+
+        for run in runs:
+            exec_time_per_run.append(run["execution_time"])
+        
+        exec_time_per_conf.append(np.mean(exec_time_per_run))
+
+    plt.figure(figsize=(10,6))
+    dynamic_font_size = max(6, min(12, 120 / len(conf)))
+    bars = plt.bar(conf,exec_time_per_conf, color='mediumseagreen', edgecolor='black')
+    plt.bar_label(bars,padding=3, fmt='%.2f', fontsize=dynamic_font_size, fontweight='bold')
+
+    plt.title("Tempo medio di esecuzione per configurazione", fontsize=14)
+    plt.xlabel("Configurazioni", fontsize=12)
+    plt.ylabel("Tempo di esecuzione (sec)", fontsize=12)
+
+    plt.xticks(rotation=45, ha="right")
+
+
+    plt.tight_layout()
+    plt.show()
+
+
+
+
 
 # =============================================================================
 # MAIN
 # =============================================================================
-def oldmain():
-    # 1. Caricamento dati
-    #X, y = load_darwin_dataset("DARWIN.csv")
-
-    # 2. Conversione target
-    #y_numeric = y.map({'P': 1, 'H': 0})
-
-    # 3. Esecuzione dell'esperimento pesante
-    #print("Avvio dell'esperimento Swarm Size (potrebbe richiedere tempo)...")
-
-    # Nota: Assicurati di passare i parametri corretti che la funzione si aspetta
-    #results = run_experiment_swarm_size(X, y_numeric, n_runs=30)
-
-    # 4. SALVATAGGIO DEI RISULTATI (PICKLE)
-    #filename = "risultati_swarm_size.pkl"
-    #print(f"Salvataggio dei risultati in {filename}...")
-
-    #with open(filename, "wb") as f:
-    #    pickle.dump(results, f)
-
-    #print("Salvataggio completato")
-
-    # 1. Caricamento risultati
-    with open("risultati_swarm_size.pkl", "rb") as f:
-        results = pickle.load(f)
-
-    # 2. Costruzione logger aggregati per ogni swarm size
-    aggregated_by_swarm = {}
-
-    for swarm_size, runs in results.items():
-        aggregated_by_swarm[swarm_size] = build_aggregated_results_for_plot(runs)
-        print(f"Plot convergenza media - Swarm size {swarm_size}")
-
-        aggregated_results = build_aggregated_results_for_plot(runs)
-
-        plot_convergence_curves(
-            aggregated_results,
-            title=f"Convergence Curve (Mean of 30 runs) - Swarm size {swarm_size}"
-        )
-
-    # 3. Plot unico con TUTTE le swarm size
-    plot_all_swarms_convergence(
-        aggregated_by_swarm,
-        title="PSO Convergence Comparison (Mean over 30 runs)"
-    )
-
 def main():
 
     # ============================================================
@@ -1475,16 +1561,16 @@ def main():
 
         if EXPERIMENT == "swarm":
             print("Avvio esperimento: SWARM SIZE")
-            results = run_experiment_swarm_size(X, y, n_runs=N_RUNS)
+            results = run_experiment_swarm_size(X, y_numeric, n_runs=N_RUNS)
 
         elif EXPERIMENT == "coeff":
             print("Avvio esperimento: PSO COEFFICIENTS")
-            results = run_experiment_pso_coefficients(X, y, n_runs=N_RUNS, section_id=1, n_sections=1)
+            results = run_experiment_pso_coefficients(X, y_numeric, n_runs=N_RUNS, section_id=1, n_sections=1)
 
         elif EXPERIMENT == "stop":
             print("Avvio esperimento: STOPPING CRITERIA")
             #results = run_experiment_stopping_criteria(X, y_numeric, n_runs=N_RUNS)
-            results = run_experiment_stopping_criteria(X, y, n_runs=30, section_id=1, n_sections=1)
+            results = run_experiment_stopping_criteria(X, y_numeric, n_runs=30, section_id=1, n_sections=1)
 
         else:
             raise ValueError("Esperimento non riconosciuto")
@@ -1516,31 +1602,36 @@ def main():
 
             # Aggregazione per swarm size
 
+            plot_exec_time(results)
             plot_fitness_boxplots(results)
 
             aggregated_by_swarm = {}
 
 
             for swarm_size, runs in results.items():
-                aggregated = build_aggregated_results_for_plot(runs)
+                aggregated = build_best_run_results_for_plot(runs)
                 aggregated_by_swarm[swarm_size] = aggregated
-
-                plot_convergence_curves(
+                plot_runs_with_statistics(
+                    runs,
+                    title=f"Convergence Statistics ({N_RUNS} runs) - Swarm Size {swarm_size}"
+                )
+                """ plot_convergence_curves(
                     aggregated,
                     title=f"Convergence Curve (Mean of {N_RUNS} runs) - Swarm size {swarm_size}"
                 )
-                aggregated_by_swarm[swarm_size] = aggregated
+                """
+                
                 plot_swarm_behavior(
                     aggregated,
-                    title=f"Swarm behavior (Mean of {N_RUNS} runs) - Swarm size {swarm_size}"
-                )
+                    title=f"Swarm behavior (Best of {N_RUNS} runs) - Swarm size {swarm_size}"
+                ) 
             # Plot comparativo finale
             plot_all_swarms_convergence(
                 aggregated_by_swarm,
-                title="PSO Convergence Comparison (Mean over runs)"
+                title="PSO Convergence Comparison (Best runs for each configuration)"
             )
             # Plot della frequenza di scelta delle feature 
-            plot_feature_frequency(results, top_k=100)
+            plot_feature_frequency(results, top_k=10)
             
             
             
@@ -1562,37 +1653,64 @@ def main():
 
             # Aggregazione per swarm size
 
+            
+            plot_exec_time(results)
             plot_fitness_boxplots(results)
-
+            
             aggregated_by_coeff = {}
-
+            
             for coefficients, runs in results.items():
-                aggregated = build_aggregated_results_for_plot(runs)
-                aggregated_by_coeff[coefficients] = aggregated
+                
+                #print(coefficients)
+                if coefficients == (0.4,1.5,2.5):
+                    best_fitness_list = []
+                    best_pos_list = []
+                    for run in runs:
+                        logger = run["logger"]
+                        best_fitness_list.append(run["best_fitness"])
+                        best_pos_list.append(run["best_position"])
+                        
+                    max_index = best_fitness_list.index(max(best_fitness_list))
+                    print(best_pos_list[max_index])
+                    with open("best_feat_list", "wb") as f:
+                        pickle.dump(best_pos_list[max_index], f)
 
-                """ plot_convergence_curves(
+
+                aggregated = build_best_run_results_for_plot(runs)
+                aggregated_by_coeff[coefficients] = aggregated
+                """ 
+                plot_runs_with_statistics(
+                    runs,
+                    title=f"Convergence Statistics ({N_RUNS} runs) - Coefficients: {coefficients}"
+                )
+                plot_convergence_curves(
                     aggregated,
                     title=f"Convergence Curve (Mean of {N_RUNS} runs) - Coefficients {coefficients}"
                 )
-                aggregated_by_coeff[coefficients] = aggregated
+                
+
                 plot_swarm_behavior(
                     aggregated,
-                    title=f"Swarm behavior (Mean of {N_RUNS} runs) - Coefficients {coefficients}"
+                    title=f"Swarm behavior (Best of {N_RUNS} runs) - Coefficients {coefficients}"
                 )
                 """
+                
             # Plot comparativo finale
             """ plot_all_swarms_convergence(
                 aggregated_by_coeff,
                 title="PSO Convergence Comparison (Mean over runs)"
-            ) """
+            ) 
+            """
             for i in range(1,4):
                 plot_all_coeff_variations(
                     aggregated_by_coeff,
-                    title="PSO Behaviour Comparison (Mean over runs)",
+                    title=f"Swarm Behaviour Comparison (Best of {N_RUNS}) - ",
                     index_coeff=i
                 )
+            
             # Plot della frequenza di scelta delle feature 
-            #plot_feature_frequency(results, top_k=100)
+           
+            #plot_feature_frequency(results, top_k=10)
 
 
         elif EXPERIMENT == "stop":
@@ -1612,13 +1730,19 @@ def main():
 
             # Aggregazione per swarm size
 
+            plot_exec_time(results)
             plot_fitness_boxplots(results)
 
             aggregated_by_stop = {}
 
             for stop, runs in results.items():
-                aggregated = build_aggregated_results_for_plot(runs)
+                aggregated = build_best_run_results_for_plot(runs)
                 aggregated_by_stop[stop] = aggregated
+                """ 
+                plot_runs_with_statistics(
+                    runs,
+                    title=f"Convergence Statistics ({N_RUNS} runs) - Stop Criteria {stop}"
+                )
 
                 plot_convergence_curves(
                     aggregated,
@@ -1628,16 +1752,16 @@ def main():
                 plot_swarm_behavior(
                     aggregated,
                     title=f"Swarm behavior (Mean of {N_RUNS} runs) - Coefficients {stop}"
-                )
-                
+                ) """
+            print(aggregated_by_stop)
             # Plot comparativo finale
             plot_all_swarms_convergence(
                 aggregated_by_stop,
-                title="PSO Convergence Comparison (Mean over runs)"
+                title="PSO Convergence Comparison (Best run per configuration)"
             )
             
             # Plot della frequenza di scelta delle feature 
-            plot_feature_frequency(results, top_k=100)
+            plot_feature_frequency(results, top_k=10)
 
             
             
@@ -1655,10 +1779,10 @@ if __name__ == "__main__":
     # ============================================================
 
     MODE = "plot"          # "run" | "plot"
-    EXPERIMENT = "swarm"   # "swarm" | "coeff" | "stop"
+    EXPERIMENT = "stop"   # "swarm" | "coeff" | "stop"
 
     N_RUNS = 30
     DATASET_PATH = "DARWIN.csv"
-    PICKLE_FILE = f"pickles/risultati_{EXPERIMENT}.pkl"
+    PICKLE_FILE = f"pickles/risultati_{EXPERIMENT}_seed.pkl"
 
     main()
