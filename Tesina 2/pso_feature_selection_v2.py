@@ -70,7 +70,7 @@ class Particle:
     HINT:
     - Posizione binaria: 1 = feature selezionata, 0 = feature non selezionata
     - Velocità: valori continui che influenzano la probabilità di selezione
-    - Considerate la funzione sigmoid per convertire velocità in probabilità
+    - Considerate la funzione sigmoid per convertire velocità in probabilità (cambiata in v function)
     """
 
     def __init__(self, n_features: int, position: np.ndarray = None):
@@ -1547,52 +1547,6 @@ def plot_exec_time (results : dict):
 # =============================================================================
 # MAIN
 # =============================================================================
-def oldmain():
-    # 1. Caricamento dati
-    #X, y = load_darwin_dataset("DARWIN.csv")
-
-    # 2. Conversione target
-    #y_numeric = y.map({'P': 1, 'H': 0})
-
-    # 3. Esecuzione dell'esperimento pesante
-    #print("Avvio dell'esperimento Swarm Size (potrebbe richiedere tempo)...")
-
-    # Nota: Assicurati di passare i parametri corretti che la funzione si aspetta
-    #results = run_experiment_swarm_size(X, y_numeric, n_runs=30)
-
-    # 4. SALVATAGGIO DEI RISULTATI (PICKLE)
-    #filename = "risultati_swarm_size.pkl"
-    #print(f"Salvataggio dei risultati in {filename}...")
-
-    #with open(filename, "wb") as f:
-    #    pickle.dump(results, f)
-
-    #print("Salvataggio completato")
-
-    # 1. Caricamento risultati
-    with open("risultati_swarm_size.pkl", "rb") as f:
-        results = pickle.load(f)
-
-    # 2. Costruzione logger aggregati per ogni swarm size
-    aggregated_by_swarm = {}
-
-    for swarm_size, runs in results.items():
-        aggregated_by_swarm[swarm_size] = build_aggregated_results_for_plot(runs)
-        print(f"Plot convergenza media - Swarm size {swarm_size}")
-
-        aggregated_results = build_aggregated_results_for_plot(runs)
-
-        plot_convergence_curves(
-            aggregated_results,
-            title=f"Convergence Curve (Mean of 30 runs) - Swarm size {swarm_size}"
-        )
-
-    # 3. Plot unico con TUTTE le swarm size
-    plot_all_swarms_convergence(
-        aggregated_by_swarm,
-        title="PSO Convergence Comparison (Mean over 30 runs)"
-    )
-
 def main():
 
     # ============================================================
