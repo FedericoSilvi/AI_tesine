@@ -87,19 +87,19 @@ def train_mlp_with_cv(
     mlp : MLPClassifier = None
 ):
     """
-    Cross-validation ripetuta (n_runs) con pipeline definita UNA volta.
-    In più calcola learning curves classiche (train/val vs train_size).
-    Inoltre (opzionale) calcola accuracy per epoca usando warm_start=True.
+    Cross-validation ripetuta (n_runs) con pipeline definita una sola volta.
+    Calcola learning curves (train/val vs train_size).
+    Calcola accuracy per epoca usando warm_start=True.
 
     Ritorna:
-      - logger (come prima)
-      - lc_results: dict learning curve classica
+      - logger
+      - lc_results: dict learning curves
       - epoch_results: dict accuracy-per-epoca (oppure None se disabilitato)
     """
     warnings.filterwarnings("ignore")
     logger = CVLogger()
 
-    # Pipeline DEFINITA UNA VOLTA (config base)
+    # Pipeline 
     if mlp == None :
         base_pipeline = Pipeline([
             ("imputer", SimpleImputer(strategy="median")),
@@ -113,12 +113,12 @@ def train_mlp_with_cv(
             ("mlp", mlp)
         ])
     
-    # Accumulatori per learning curves classiche su tutte le run
+    # Variabili per learning curves classiche su tutte le run
     all_lc_train_scores = []
     all_lc_val_scores = []
     lc_train_sizes_ref = None
 
-    # Accumulatori accuracy-per-epoca
+    # Variabili per accuracy-per-epoca
     epoch_results = None
     epoch_train_curves = []
     epoch_val_curves = []
@@ -193,7 +193,7 @@ def train_mlp_with_cv(
                 epoch_train_curves.append(train_acc_epoch)
                 epoch_val_curves.append(val_acc_epoch)
 
-            # Metriche finali (dopo tutte le epoche)
+            # Metriche finali
             y_train_pred = fold_pipe.predict(X_train_fold)
             y_test_pred  = fold_pipe.predict(X_test_fold)
             y_test_proba = fold_pipe.predict_proba(X_test_fold)[:, 1]
@@ -235,8 +235,8 @@ def train_mlp_with_cv(
             y_proba=run_y_proba
         )
 
-        # ===== Learning curve "classica" per questa run =====
-        # Qui dobbiamo usare una pipeline che fa fit completo, non epoca per epoca
+        # ===== Learning curve per questa run =====
+        # Qui c'è una pipeline che fa fit completo, non epoca per epoca
         lc_pipeline = clone(pipeline_for_run).set_params(
             mlp__warm_start=False,
             mlp__max_iter=max_epochs
@@ -277,7 +277,7 @@ def train_mlp_with_cv(
         "n_splits": n_splits
     }
 
-    # ===== Aggregazione accuracy-per-epoca =====
+    # ===== Accuracy-per-epoca =====
     if compute_epoch_accuracy and len(epoch_train_curves) > 0:
         epoch_train_curves = np.array(epoch_train_curves)  # shape: (k, max_epochs)
         epoch_val_curves = np.array(epoch_val_curves)

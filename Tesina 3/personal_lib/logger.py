@@ -49,6 +49,9 @@ class MLPLogger:
 
 # Logger esteso per CV
 class CVLogger:
+    """
+    Classe per il Logger dell'MLP con Cross-Validation
+    """
     def __init__(self):
         self.train_scores = []
         self.training_times = []

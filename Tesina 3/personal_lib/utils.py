@@ -63,7 +63,9 @@ def load_dataset(filepath: str, selection : bool = False,  verbose : bool = Fals
     return features, classes
 
 def get_mlp_config(scenario : str ="architecture",SEED : int =42):
-
+    """
+    A seconda dello scenario si costruisce la lista di MLP con i parametri richiesti
+    """
     mlp_configs ={}
     
 

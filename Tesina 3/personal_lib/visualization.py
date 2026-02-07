@@ -29,21 +29,18 @@ def plot_loss_convergence(logger,scenario = "_",save_path="_convergence_analysis
         plt.plot(curve, color='deepskyblue', alpha=0.15, linewidth=1)
 
     # Calcolo della curva MEDIA
-    # Poiché le curve hanno lunghezze diverse (le run finiscono in epoche diverse),
-    # dobbiamo uniformarle per calcolare la media.
 
     # Troviamo la lunghezza massima tra tutte le run
     max_len = max(len(c) for c in curves)
 
-    # Creiamo una matrice piena di NaN
+    # Creazione matrice
     curves_matrix = np.full((len(curves), max_len), np.nan)
 
-    # Riempiamo la matrice
+    # Riepimento  matrice
     for i, curve in enumerate(curves):
         curves_matrix[i, :len(curve)] = curve
 
-    # Calcoliamo la media ignorando i NaN (nanmean)
-    # Questo ci dà la loss media istante per istante, finché ci sono run attive
+    # Calcoliamo la media ignorando i NaN: loss media istante per istante, finché ci sono run attive
     mean_curve = np.nanmean(curves_matrix, axis=0)
 
     # Plot della media
@@ -192,9 +189,9 @@ def plot_cv_roc_curve(y_true_list, y_proba_list, scenario ="_",save_path="_roc_c
     aucs = []
     mean_fpr = np.linspace(0, 1, 100)
 
-    # Ora y_true_list ha lunghezza 30, non 150
+    
     for i, (y_true, y_proba) in enumerate(zip(y_true_list, y_proba_list)):
-        # Calcoliamo la curva per la run i-esima
+        # Calcolo della curva per la run i-esima
         fpr, tpr, _ = roc_curve(y_true, y_proba)
         
         # Interpolazione per poter fare la media dopo
@@ -366,13 +363,15 @@ def plot_cv_prediction_stability(y_true_list, y_pred_list, n_runs=30, scenario =
 
     plt.show()
 
-    # Metriche sintetiche
-    stable_mask = (stability_mean <= 0.1) | (stability_mean >= 0.9)
-    print(f"Campioni con predizione stabile (>90% delle run): {np.sum(stable_mask)}/{n_samples_total}")
 
 
 #============ OTHER SCENARIOS PLOTS ============
 def plot_configs_box_plot_all(results: dict, scenario="_", save_path="_accuracy_boxplot_all", title="Box Plot Accuracy"):
+    """
+    Visualizza le box plot dell'accuracy di tutte le configurazioni, aggiustando 
+    il gap tra le box plot a seconda dello scenario
+    """
+
     print(scenario)
     configs = []
     test_scores = []
@@ -383,7 +382,7 @@ def plot_configs_box_plot_all(results: dict, scenario="_", save_path="_accuracy_
 
     plt.figure(figsize=(14, 6)) 
 
-    # --- NUOVA LOGICA GAP DINAMICO ---
+    # Gap dinamico a seconda dello scenario
     positions = []
     current_pos = 1
     
@@ -406,11 +405,11 @@ def plot_configs_box_plot_all(results: dict, scenario="_", save_path="_accuracy_
                 current_pos += 1
     else:
         positions = range(1, len(configs) + 1)
-    # ---------------------------------
+    
 
     plt.boxplot(test_scores, positions=positions)
 
-    # Use the calculated positions for the x-ticks as well
+    
     plt.xticks(positions, configs, rotation=45, ha='right')
 
     plt.title(title)
@@ -423,6 +422,9 @@ def plot_configs_box_plot_all(results: dict, scenario="_", save_path="_accuracy_
     plt.show()
 
 def plot_configs_exec_time_all(results: dict, scenario="_", save_path="_exec_time_all", title="Tempi di Esecuzione"):
+    """
+    Visualizza i tempi di esecuzione di ogni configurazione
+    """
     exec_times = []
     configs = []
 
@@ -433,7 +435,7 @@ def plot_configs_exec_time_all(results: dict, scenario="_", save_path="_exec_tim
 
     plt.figure(figsize=(12, 6))
 
-    # --- NUOVA LOGICA GAP DINAMICO ---
+    # Gap dinamico a seconda dello scenario-
     positions = []
     current_pos = 1
     
@@ -456,7 +458,7 @@ def plot_configs_exec_time_all(results: dict, scenario="_", save_path="_exec_tim
                 current_pos += 1
     else:
         positions = range(1, len(configs) + 1)
-    # ---------------------------------
+    
 
     bars = plt.bar(positions, exec_times, color='mediumseagreen', edgecolor='black')
     
@@ -565,7 +567,7 @@ def plot_cv_stability_comparison(results_y_true: Dict, results_y_pred: Dict, n_r
 
     # 2. Parametri del plot
     x = np.arange(len(bin_labels))  # Posizioni dei bin
-    width = 0.8 / len(configs)       # Larghezza dinamica delle barre basata sul numero di config
+    width = 0.8 / len(configs)       # Larghezza dinamica delle barre basata sul numero di configs
     
     fig, ax = plt.subplots(figsize=(14, 8))
 
@@ -586,8 +588,6 @@ def plot_cv_stability_comparison(results_y_true: Dict, results_y_pred: Dict, n_r
     plt.tight_layout()
     plt.savefig(f"Immagini/{scenario}/{save_path}.png", dpi=300)
     plt.show()
-
-
 
 def plot_config_roc_curves(results: Dict, scenario="_",save_path ="_roc_curves", title="Confronto Curve ROC (Top 10 Configurazioni)"):
     """
@@ -678,7 +678,6 @@ def plot_config_roc_curves(results: Dict, scenario="_",save_path ="_roc_curves",
 
     plt.show()  
 
-
 def plot_config_loss_convergence(results_dict: Dict, scenario="_", save_path="_convergence_comparison.png"):
     """
     Visualizza il confronto delle curve di loss media tra diverse configurazioni.
@@ -729,7 +728,6 @@ def plot_config_loss_convergence(results_dict: Dict, scenario="_", save_path="_c
     plt.savefig(f"Immagini/{scenario}/{save_path}", dpi=300, bbox_inches='tight')
     plt.show()
 
-
 def plot_config_epoch_accuracy(epoch_res, scenario="_", save_path="_accuracy_comparison.png"):
     """
     Confronta media e deviazione standard su due grafici affiancati con legende indipendenti.
@@ -742,7 +740,7 @@ def plot_config_epoch_accuracy(epoch_res, scenario="_", save_path="_accuracy_com
     # Creazione della figura con due subplot
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 7))
     
-    # Utilizzo della colormap tab10
+    # Utilizzo della colormap 
     colors = plt.cm.get_cmap('tab10', len(epoch_res))
 
     for i, (config_name, epoch_data) in enumerate(epoch_res.items()):
@@ -754,10 +752,10 @@ def plot_config_epoch_accuracy(epoch_res, scenario="_", save_path="_accuracy_com
         sv = epoch_data["std_val_acc"]
         color = colors(i)
 
-        # --- GRAFICO 1: MEDIA ---
+        # Grafico della media
         ax1.plot(e, mv, label=config_name, color=color, linewidth=2.5)
         
-        # --- GRAFICO 2: DEVIAZIONE STANDARD ---
+        # Grafico della deviazione
         ax2.plot(e, sv, label=config_name, color=color, linewidth=2.5)
 
     # Configurazione Grafico Media
@@ -779,7 +777,6 @@ def plot_config_epoch_accuracy(epoch_res, scenario="_", save_path="_accuracy_com
     plt.tight_layout()
     plt.savefig(f"Immagini/{scenario}/{save_path}", dpi=300)
     plt.show()
-
 
 def plot_config_learning_curves(lc_results_dict, scenario="_", save_path="_learning_curves_grid.png"):
     """
