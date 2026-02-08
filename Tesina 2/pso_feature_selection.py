@@ -639,7 +639,6 @@ def run_experiment_swarm_size(X: pd.DataFrame, y: pd.Series,
 
     return results
 
-
 def run_experiment_pso_coefficients(X: pd.DataFrame, y: pd.Series,
                                     n_runs: int = 30,
                                     section_id: int = 1,
@@ -1050,7 +1049,6 @@ def plot_fitness_boxplots(results: Dict, title: str = "Fitness Distribution"):
     plt.tight_layout()
     plt.show()
 
-
 def plot_feature_frequency(results: dict, top_k: int = 20):
     """
     Genera un bar graph per ogni swarm size con le top-k feature
@@ -1145,7 +1143,6 @@ def plot_swarm_behavior(swarm_data: Dict, title: str = "Swarm Behavior"):
 
     plt.show()
 
-
 def plot_all_swarms_convergence(aggregated_results_by_swarm: dict,
                                 title: str = "Convergence Comparison Across Swarm Sizes"):
     """
@@ -1211,7 +1208,6 @@ def plot_all_swarms_convergence(aggregated_results_by_swarm: dict,
 
     plt.tight_layout()
     plt.show()
-
 
 def plot_all_coeff_variations(aggregated_results_by_swarm: dict,
                               index_coeff: int,
@@ -1423,7 +1419,6 @@ def merge_stopping_criteria_results(n_sections: int = 1, output_file: str = "sto
 
     return final_results
 
-
 def build_aggregated_results_for_plot(runs: list):
     """
     Costruisce un dizionario 'results' compatibile con
@@ -1527,10 +1522,6 @@ def plot_exec_time (results : dict):
     plt.tight_layout()
     plt.show()
 
-
-
-
-
 # =============================================================================
 # MAIN
 # =============================================================================
@@ -1556,7 +1547,6 @@ def main():
 
         elif EXPERIMENT == "stop":
             print("Avvio esperimento: STOPPING CRITERIA")
-            #results = run_experiment_stopping_criteria(X, y_numeric, n_runs=N_RUNS)
             results = run_experiment_stopping_criteria(X, y_numeric, n_runs=30, section_id=1, n_sections=1)
 
         else:
@@ -1619,9 +1609,6 @@ def main():
             )
             # Plot della frequenza di scelta delle feature 
             plot_feature_frequency(results, top_k=10)
-            
-            
-            
 
         elif EXPERIMENT == "coeff":
 

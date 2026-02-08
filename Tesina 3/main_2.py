@@ -22,7 +22,6 @@ def main_phase_1(feature_selection : bool = False, filepath : str ="DARWIN.csv",
     - Report a terminale di comparazione
     """
 
-
     print("=" * 70)
     print("FASE 1: ANALISI MLP DEFAULT")
     print("=" * 70)
@@ -100,9 +99,6 @@ def main_phase_1(feature_selection : bool = False, filepath : str ="DARWIN.csv",
     print(f"Train Accuracy:   {split_summary['mean_train_acc']:.4f}")
 
     print("=" * 70) 
-
-    
-
 
     return cv_logger, split_logger, final_model, lc_results, epoch_results
 

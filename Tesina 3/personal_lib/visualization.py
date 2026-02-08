@@ -314,14 +314,14 @@ def plot_cv_prediction_stability(y_true_list, y_pred_list, n_runs=30, scenario =
     y_true_all = flatten(y_true_list)
     y_pred_all = flatten(y_pred_list)
 
-    # 2. Ricostruzione della matrice (n_runs x n_samples)
-    # Calcoliamo quanti campioni ci sono in una singola run (il dataset intero)
+    # 2. Ricostruzione della matrice 
+    # Calcoliamo quanti campioni ci sono in una singola run 
     n_samples_total = len(y_true_all) // n_runs
     
     # Ridimensioniamo le predizioni in una matrice: ogni riga è una run completa
     try:
         preds_matrix = y_pred_all.reshape(n_runs, n_samples_total)
-        # Prendiamo un solo set di y_true (le etichette sono le stesse per ogni run)
+        # Prendiamo un solo set di y_true 
         y_true_single = y_true_all[:n_samples_total]
     except ValueError:
         print("Errore: Il numero totale di campioni non è divisibile per n_runs.")
@@ -597,8 +597,6 @@ def plot_config_roc_curves(results: Dict, scenario="_",save_path ="_roc_curves",
     
     """
 
-    
-
     accs = np.array([cv.get_summary()['mean_test_acc'] for _, cv in results.items()])
     acc_min, acc_max = accs.min(), accs.max()
 
@@ -763,6 +761,7 @@ def plot_config_epoch_accuracy(epoch_res, scenario="_", save_path="_accuracy_com
     ax1.set_xlabel("Epoche", fontsize=12)
     ax1.set_ylabel("Mean Accuracy", fontsize=12)
     ax1.grid(True, linestyle="--", alpha=0.4)
+
     # Autoscale del minimo, tetto fissato a 1.0 (con un piccolo margine)
     ax1.set_ylim(bottom=None, top=1.02) 
     ax1.legend(fontsize=9, loc='best') # Legenda interna al primo grafico
@@ -787,6 +786,7 @@ def plot_config_learning_curves(lc_results_dict, scenario="_", save_path="_learn
         return
 
     n_configs = len(lc_results_dict)
+    
     # Calcoliamo righe e colonne per la griglia (es. con 4 config facciamo 2x2)
     cols = 2
     rows = (n_configs + 1) // cols

@@ -178,7 +178,7 @@ class KruskalMST:
         self.parent[v] = v  # il nodo v è inizialmente padre di se stesso
         self.rank[v] = 0  # l'albero ha altezza (rank) iniziale 0
 
-        # e chest'è
+        
     
     def _find(self, v: int) -> int:
         """
@@ -206,7 +206,7 @@ class KruskalMST:
 
         return self.parent[v]
 
-        # e chest'è 2
+        
     
     def _union(self, v1: int, v2: int) -> None:
         """

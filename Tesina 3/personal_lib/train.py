@@ -72,7 +72,6 @@ def train_mlp(X: pd.DataFrame, y: pd.Series,
 
     return logger, test_pred, pipeline
 
-
 def train_mlp_with_cv(
     X: pd.DataFrame,
     y: pd.Series,
@@ -80,7 +79,6 @@ def train_mlp_with_cv(
     n_runs: int = 30,
     train_sizes: np.ndarray = np.linspace(0.1, 1.0, 8),
     scoring: str = "accuracy",
-    # ---- Accuracy per epoca (warm_start) ----
     compute_epoch_accuracy: bool = True,
     max_epochs: int = 200,
     epoch_mode: str = "first_run_first_fold",  # alternative: "first_run_all_folds", "all_runs_first_fold", "all"
@@ -134,7 +132,7 @@ def train_mlp_with_cv(
             return (fold_idx == 0)
         if epoch_mode == "all":
             return True
-        # fallback
+
         return (run_idx == 0 and fold_idx == 0)
 
     for run in range(n_runs):
